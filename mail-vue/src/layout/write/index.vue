@@ -52,6 +52,17 @@
           <div class="att-clear" @click="clearContent">
             <Icon icon="icon-park-outline:clear-format" width="24" height="24 "/>
           </div>
+          <el-dropdown v-perm="'ai:use'" trigger="click" @command="handleWriteAiAction">
+            <div class="att-add">
+              <Icon icon="fluent:brain-sparkle-24-regular" width="24" height="24"/>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="polish">{{ $t('aiPolish') }}</el-dropdown-item>
+                <el-dropdown-item command="generate">{{ $t('aiGenerate') }}</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <div class="att-list">
             <div class="att-item" v-for="(item,index) in form.attachments" :key="index">
               <Icon v-bind="getIconByName(item.filename)"/>
@@ -90,10 +101,20 @@
         <el-button type="primary" @click="chooseContact">{{t('selectContacts')}}</el-button>
       </div>
     </el-dialog>
+    <AiDialog
+      v-model="aiDialogVisible"
+      :action="aiAction"
+      :content="aiContent"
+      :subject="form.subject"
+      :show-insert="true"
+      :prompt-visible="aiAction === 'generate'"
+      @insert="handleAiInsertToEditor"
+    />
   </div>
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
+import AiDialog from '@/components/ai-dialog/index.vue'
 import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
@@ -119,7 +140,8 @@ defineExpose({
   open,
   openReply,
   openForward,
-  openDraft
+  openDraft,
+  editor
 })
 
 const {t} = useI18n()
@@ -138,6 +160,9 @@ const defValue = ref('')
 const contactsTabRef = ref({})
 const showContacts = ref(false)
 const mySelect = ref()
+const aiDialogVisible = ref(false)
+const aiAction = ref('')
+const aiContent = ref('')
 let selectStatus = false
 const backReply = reactive({
   receiveEmail: [],
@@ -259,6 +284,20 @@ function clearContent() {
     resetForm()
   })
 
+}
+
+function handleWriteAiAction(command) {
+  aiAction.value = command
+  if (command === 'polish') {
+    aiContent.value = editor.value.getContent()
+  } else {
+    aiContent.value = ''
+  }
+  aiDialogVisible.value = true
+}
+
+function handleAiInsertToEditor(content) {
+  editor.value.setContent(content)
 }
 
 function delAtt(index) {

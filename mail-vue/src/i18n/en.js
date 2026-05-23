@@ -337,7 +337,26 @@ const en = {
     searchUser: 'Search by user',
     searchEmail: 'Search by Email',
     searchSender: 'Search by Sender',
-    userEmail: 'Email Address'
+    userEmail: 'Email Address',
+    aiTranslate: 'AI Translate',
+    aiSummarize: 'AI Summarize',
+    aiReply: 'AI Reply',
+    aiPolish: 'AI Polish',
+    aiGenerate: 'AI Generate',
+    aiSettings: 'AI Settings',
+    aiApiUrlPlaceholder: 'External AI API URL, e.g. https://api.openai.com/v1/chat/completions',
+    aiApiKeyPlaceholder: 'Leave empty if unchanged',
+    aiModelPlaceholder: 'e.g. gpt-4o, deepseek-chat',
+    aiSettingsTip: 'External AI API takes priority when configured. Falls back to Workers AI if not configured.',
+    aiInsertEditor: 'Insert to Editor',
+    aiCopy: 'Copy',
+    aiRegenerate: 'Regenerate',
+    aiGenerating: 'AI is generating...',
+    aiReady: 'Click button to start generating',
+    aiInputPrompt: 'Describe the email content you want to generate...',
+    aiLanguage: 'English',
+    aiCopySuccess: 'Copied',
+    aiCopyFail: 'Copy failed'
 }
 
 export default en

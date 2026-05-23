@@ -392,6 +392,33 @@
             </div>
           </div>
 
+          <div class="settings-card">
+            <div class="card-title">{{ $t('aiSettings') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div><span>API URL</span></div>
+                <div class="setting-input">
+                  <el-input v-model="setting.aiApiUrl" :placeholder="$t('aiApiUrlPlaceholder')" @change="changeField('aiApiUrl', $event)" />
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>API Key</span></div>
+                <div class="setting-input">
+                  <el-input v-model="setting.aiApiKey" type="password" show-password :placeholder="$t('aiApiKeyPlaceholder')" @change="changeField('aiApiKey', $event)" />
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>Model</span></div>
+                <div class="setting-input">
+                  <el-input v-model="setting.aiModel" :placeholder="$t('aiModelPlaceholder')" @change="changeField('aiModel', $event)" />
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span class="setting-tip">{{ $t('aiSettingsTip') }}</span></div>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-card about">
             <div class="card-title">{{ $t('about') }}</div>
             <div class="card-content">
@@ -1448,6 +1475,7 @@ function backupSetting() {
   delete settingForm.resendTokens
   delete settingForm.siteKey
   delete settingForm.secretKey
+  delete settingForm.aiApiKey
   backup = JSON.stringify(setting.value)
 }
 
@@ -1469,6 +1497,7 @@ function change(e) {
   delete settingForm.s3AccessKey
   delete settingForm.s3SecretKey
   delete settingForm.tgBotToken
+  delete settingForm.aiApiKey
   delete settingForm.resendTokens
   editSetting(settingForm, false)
 }
@@ -1655,6 +1684,17 @@ function editSetting(settingForm, refreshStatus = true) {
     justify-items: flex-end;
     font-weight: normal;
   }
+}
+
+.setting-input {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.setting-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .r2domain-item {

@@ -337,6 +337,25 @@ const zh = {
     searchUser: '搜索用户',
     searchEmail: '搜索邮箱',
     searchSender: '搜索发件人',
-    userEmail: '用户邮箱'
+    userEmail: '用户邮箱',
+    aiTranslate: 'AI 翻译',
+    aiSummarize: 'AI 总结',
+    aiReply: 'AI 回复',
+    aiPolish: 'AI 润色',
+    aiGenerate: 'AI 生成',
+    aiSettings: 'AI 设置',
+    aiApiUrlPlaceholder: '外部 AI API 地址，如 https://api.openai.com/v1/chat/completions',
+    aiApiKeyPlaceholder: '未修改请留空',
+    aiModelPlaceholder: '如 gpt-4o、deepseek-chat',
+    aiSettingsTip: '配置外部 AI API 后将优先使用，未配置时使用 Workers AI',
+    aiInsertEditor: '插入编辑器',
+    aiCopy: '复制',
+    aiRegenerate: '重新生成',
+    aiGenerating: 'AI 正在生成...',
+    aiReady: '点击按钮开始生成',
+    aiInputPrompt: '请描述你想生成的邮件内容...',
+    aiLanguage: '中文',
+    aiCopySuccess: '复制成功',
+    aiCopyFail: '复制失败'
 }
 export default zh

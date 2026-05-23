@@ -66,6 +66,9 @@ const zh = {
 	notAdmin: '输入的邮箱不是管理员邮箱',
 	emailExistDatabase: '有邮箱已存在数据库中',
 	notConfigOss: '对象存储未配置',
+	aiNotConfigured: 'AI 服务未配置，请在系统设置中配置 AI API 或启用 Workers AI',
+	invalidAiAction: '无效的 AI 操作类型',
+	emptyAiContent: 'AI 操作内容不能为空',
 	perms: {
 		"邮件": "邮件",
 		"邮件发送": "邮件发送",
@@ -99,8 +102,10 @@ const zh = {
 		"系统设置": "系统设置",
 		"设置查看": "设置查看",
 		"设置修改": "设置修改",
-		'发件重置': '发件重置'
-	}
+		'发件重置': '发件重置',
+		'AI 助手': 'AI 助手',
+		'AI 使用': 'AI 使用'
+	},
 }
 
 export default zh

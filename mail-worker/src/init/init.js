@@ -30,6 +30,7 @@ const dbInit = {
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
 		await this.v3_1DB(c);
+		await this.v3_2DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -39,6 +40,35 @@ const dbInit = {
 			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN login_darken_factor INTEGER NOT NULL DEFAULT 0;`).run();
 		} catch (e) {
 			console.warn(`跳过字段：${e.message}`);
+		}
+	},
+
+	async v3_2DB(c) {
+
+		const ADD_COLUMN_SQL_LIST = [
+			`ALTER TABLE setting ADD COLUMN ai_api_url TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN ai_api_key TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE setting ADD COLUMN ai_model TEXT NOT NULL DEFAULT '';`
+		];
+
+		const promises = ADD_COLUMN_SQL_LIST.map(async (sql) => {
+			try {
+				await c.env.db.prepare(sql).run();
+			} catch (e) {
+				console.warn(`跳过字段添加：${e.message}`);
+			}
+		});
+
+		await Promise.all(promises);
+
+		try {
+			await c.env.db.prepare(`
+			INSERT INTO perm (name, perm_key, pid, type, sort) VALUES
+			('AI 助手', NULL, 0, 1, 7),
+			('AI 使用', 'ai:use', (SELECT perm_id FROM perm WHERE name = 'AI 助手'), 2, 0)
+			`).run();
+		} catch (e) {
+			console.warn(`跳过数据：${e.message}`);
 		}
 	},
 

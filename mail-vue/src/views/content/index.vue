@@ -9,6 +9,16 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <el-dropdown v-perm="'ai:use'" trigger="click" @command="handleAiAction">
+        <Icon class="icon" icon="fluent:brain-sparkle-24-regular" width="20" height="20" />
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="translate">{{ $t('aiTranslate') }}</el-dropdown-item>
+            <el-dropdown-item command="summarize">{{ $t('aiSummarize') }}</el-dropdown-item>
+            <el-dropdown-item command="reply">{{ $t('aiReply') }}</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
@@ -71,11 +81,20 @@
         show-progress
         @close="showPreview = false"
     />
+    <AiDialog
+      v-model="aiDialogVisible"
+      :action="aiAction"
+      :content="aiContent"
+      :subject="email.subject"
+      :show-insert="aiAction === 'reply'"
+      @insert="handleAiInsert"
+    />
   </div>
 </template>
 <script setup>
 import ShadowHtml from '@/components/shadow-html/index.vue'
-import {reactive, ref, watch, onMounted, onUnmounted} from "vue";
+import AiDialog from '@/components/ai-dialog/index.vue'
+import {reactive, ref, watch, onMounted, onUnmounted, nextTick} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead} from "@/request/email.js";
@@ -101,6 +120,9 @@ const router = useRouter()
 const email = emailStore.contentData.email
 const showPreview = ref(false)
 const srcList = reactive([])
+const aiDialogVisible = ref(false)
+const aiAction = ref('')
+const aiContent = ref('')
 
 const { t } = useI18n()
 watch(() => accountStore.currentAccountId, () => {
@@ -124,6 +146,29 @@ function openReply() {
 
 function openForward() {
   uiStore.writerRef.openForward(email)
+}
+
+function handleAiAction(command) {
+  aiAction.value = command
+  const domain = settingStore.settings.r2Domain
+  aiContent.value = email.content
+    ? email.content.replace(/{{domain}}/g, toOssDomain(domain) + '/')
+    : email.text || ''
+  aiDialogVisible.value = true
+}
+
+function handleAiInsert(content) {
+  if (aiAction.value === 'reply') {
+    openReply()
+    nextTick(() => {
+      setTimeout(() => {
+        const writerEl = uiStore.writerRef
+        if (writerEl?.editor?.setContent) {
+          writerEl.editor.setContent(content)
+        }
+      }, 200)
+    })
+  }
 }
 
 function toMessage(message) {

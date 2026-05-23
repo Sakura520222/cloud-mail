@@ -66,6 +66,9 @@ const en = {
 	notAdmin: 'The entered email is not an administrator email',
 	emailExistDatabase: 'Email already exists in the database',
 	notConfigOss: 'Object storage not configured',
+	aiNotConfigured: 'AI service not configured. Please configure AI API in System Settings or enable Workers AI',
+	invalidAiAction: 'Invalid AI action type',
+	emptyAiContent: 'AI operation content cannot be empty',
 	perms: {
 		"邮件": "Emails",
 		"邮件发送": "Send Email",
@@ -99,7 +102,9 @@ const en = {
 		"系统设置": "System Settings",
 		"设置查看": "View Settings",
 		"设置修改": "Change Settings",
-		"发件重置": "Reset Send Count"
+		"发件重置": "Reset Send Count",
+		'AI 助手': 'AI Assistant',
+		'AI 使用': 'Use AI'
 	}
 };
 
