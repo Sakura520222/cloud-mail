@@ -246,6 +246,7 @@ import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
 import { UseVirtualList } from '@vueuse/components'
 import { useScroll } from '@vueuse/core'
+import {callWriter} from "@/utils/writer-utils.js";
 
 const props = defineProps({
   getEmailList: Function,
@@ -487,11 +488,11 @@ window.addEventListener('wheel', (event) => {
 })
 
 function openReply(email) {
-  uiStore.writerRef.openReply(email)
+  callWriter(uiStore, 'openReply', email)
 }
 
 function openForward(email) {
-  uiStore.writerRef.openForward(email)
+  callWriter(uiStore, 'openForward', email)
 }
 
 function visibleChange(e) {

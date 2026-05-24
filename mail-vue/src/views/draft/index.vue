@@ -30,6 +30,7 @@ import {defineOptions, ref, watch, toRaw} from "vue";
 import {useUiStore} from "@/store/ui.js";
 import {userDraftStore} from "@/store/draft.js";
 import db from "@/db/db.js"
+import {callWriter} from "@/utils/writer-utils.js";
 
 defineOptions({
   name: 'draft'
@@ -85,7 +86,7 @@ async function deleteDraft(draftIds) {
 async function jumpContent(email) {
   const att = await db.value.att.get(email.draftId)
   email.attachments = att.attachments
-  uiStore.writerRef.openDraft(email);
+  callWriter(uiStore, 'openDraft', email);
 }
 
 </script>

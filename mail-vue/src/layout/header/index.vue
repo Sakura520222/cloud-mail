@@ -85,6 +85,7 @@ import {useSettingStore} from "@/store/setting.js";
 import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {setExtend} from "@/utils/day.js"
+import {callWriter} from "@/utils/writer-utils.js"
 
 const {t} = useI18n();
 const route = useRoute();
@@ -233,7 +234,8 @@ function switchDark(nextIsDark, root) {
 }
 
 function openSend() {
-  uiStore.writerRef.open()
+  uiStore.asideShow = false
+  callWriter(uiStore, 'open')
 }
 
 function changeAside() {

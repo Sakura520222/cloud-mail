@@ -187,6 +187,41 @@ const form = reactive({
 
 const selectRecipientList = ref([])
 
+function getEditor() {
+  return editor.value || null
+}
+
+function hasEditorMethod(method) {
+  return typeof getEditor()?.[method] === 'function'
+}
+
+function safeGetContent() {
+  if (!hasEditorMethod('getContent')) {
+    return ''
+  }
+  return getEditor().getContent()
+}
+
+function safeClearEditor() {
+  if (hasEditorMethod('clearEditor')) {
+    getEditor().clearEditor()
+  }
+}
+
+function focusEditorAfterReady() {
+  let attempts = 0
+  const tryFocus = () => {
+    if (hasEditorMethod('focus') && getEditor().focus() !== false) {
+      return
+    }
+    if (++attempts > 30) {
+      return
+    }
+    setTimeout(tryFocus, 100)
+  }
+  nextTick(tryFocus)
+}
+
 const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
 
 function openContacts() {
@@ -297,7 +332,7 @@ function triggerWriteAiAction(action) {
 function handleWriteAiAction(command) {
   aiAction.value = command
   if (command === 'polish') {
-    aiContent.value = editor.value.getContent()
+    aiContent.value = safeGetContent()
   } else {
     aiContent.value = ''
   }
@@ -305,14 +340,19 @@ function handleWriteAiAction(command) {
 }
 
 function handleAiInsertToEditor(content) {
-  editor.value.setContent(content)
+  setContentAfterInit(content)
 }
 
-function setContentAfterInit(content) {
+function setContentAfterInit(content, callback) {
   const checkReady = () => {
     const ed = editor.value
-    if (ed && ed.getContent && typeof ed.getContent === 'function') {
-      ed.setContent(content)
+    if (ed && typeof ed.getContent === 'function' && typeof ed.setContent === 'function') {
+      if (ed.setContent(content) === false) {
+        return false
+      }
+      if (typeof callback === 'function') {
+        callback()
+      }
       return true
     }
     return false
@@ -320,7 +360,10 @@ function setContentAfterInit(content) {
   if (!checkReady()) {
     let attempts = 0
     const interval = setInterval(() => {
-      if (checkReady() || ++attempts > 20) {
+      if (checkReady()) {
+        clearInterval(interval)
+      }
+      if (++attempts > 30) {
         clearInterval(interval)
       }
     }, 100)
@@ -375,7 +418,7 @@ async function sendEmail() {
   }
 
   if (!form.content) {
-    form.content = editor.value.getContent();
+    form.content = safeGetContent();
   }
 
   if (!form.content) {
@@ -487,7 +530,7 @@ function resetForm() {
   backReply.subject = ''
   backReply.receiveEmail = []
   backReply.sendType = ''
-  editor.value.clearEditor()
+  safeClearEditor()
 }
 
 function change(content, text) {
@@ -499,7 +542,7 @@ function focusChange() {
   if (selectStatus) openSelect()
 }
 
-function openForward(email) {
+function openForward(email, insertContent) {
   resetForm();
 
   email.subject = email.subject || ''
@@ -516,16 +559,17 @@ function openForward(email) {
     open()
 
     nextTick(() => {
-      backReply.content = editor.value.getContent()
-      backReply.subject = form.subject
-      backReply.receiveEmail = form.receiveEmail
-      backReply.sendType = form.sendType
+      if (insertContent !== undefined && insertContent !== null) {
+        setContentAfterInit(insertContent, updateBackReply)
+        return
+      }
+      setContentAfterInit(defValue.value, updateBackReply)
     })
 
   });
 }
 
-function openReply(email) {
+function openReply(email, insertContent) {
 
   resetForm();
 
@@ -557,13 +601,21 @@ function openReply(email) {
     open()
 
     nextTick(() => {
-      backReply.content = editor.value.getContent()
-      backReply.subject = form.subject
-      backReply.receiveEmail = form.receiveEmail
-      backReply.sendType = form.sendType
+      if (insertContent !== undefined && insertContent !== null) {
+        setContentAfterInit(insertContent, updateBackReply)
+        return
+      }
+      setContentAfterInit(defValue.value, updateBackReply)
     })
   })
 
+}
+
+function updateBackReply() {
+  backReply.content = safeGetContent()
+  backReply.subject = form.subject
+  backReply.receiveEmail = [...form.receiveEmail]
+  backReply.sendType = form.sendType
 }
 
 function formatImage(content) {
@@ -583,7 +635,7 @@ function open() {
     form.name = accountStore.currentAccount.name;
   }
   show.value = true;
-  editor.value.focus()
+  focusEditorAfterReady()
 }
 
 function openDraft(draft) {
@@ -591,7 +643,7 @@ function openDraft(draft) {
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
   show.value = true;
-  editor.value.focus()
+  focusEditorAfterReady()
 }
 
 const handleKeyDown = (event) => {
@@ -613,7 +665,7 @@ function close() {
   if (selectStatus) openSelect();
 
   if (!form.content) {
-    form.content = editor.value.getContent();
+    form.content = safeGetContent();
   }
 
   if (form.draftId) {
@@ -631,7 +683,7 @@ function close() {
 
   if (backReply.sendType === 'reply' || backReply.sendType === 'forward') {
     let subjectFlag = form.subject === backReply.subject
-    let contentFlag = editor.value.getContent() === backReply.content
+    let contentFlag = safeGetContent() === backReply.content
     let receiveFlag = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]
     if (backReply.sendType === 'forward' && form.receiveEmail.length === 0) {
       receiveFlag = true;
@@ -689,6 +741,7 @@ function close() {
   left: 0;
   width: 100%;
   height: 100%;
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;

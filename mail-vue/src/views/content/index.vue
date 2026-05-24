@@ -94,7 +94,7 @@
 <script setup>
 import ShadowHtml from '@/components/shadow-html/index.vue'
 import AiDialog from '@/components/ai-dialog/index.vue'
-import {reactive, ref, watch, onMounted, onUnmounted, nextTick} from "vue";
+import {reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead} from "@/request/email.js";
@@ -111,6 +111,7 @@ import {allEmailDelete} from "@/request/all-email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
+import {callWriter} from "@/utils/writer-utils.js";
 
 const uiStore = useUiStore();
 const settingStore = useSettingStore();
@@ -141,11 +142,11 @@ onUnmounted(() => {
 })
 
 function openReply() {
-  uiStore.writerRef.openReply(email)
+  callWriter(uiStore, 'openReply', email)
 }
 
 function openForward() {
-  uiStore.writerRef.openForward(email)
+  callWriter(uiStore, 'openForward', email)
 }
 
 const aiPopoverVisible = ref(false)
@@ -166,13 +167,7 @@ function handleAiAction(command) {
 
 function handleAiInsert(aiContent) {
   if (aiAction.value === 'reply') {
-    openReply()
-    nextTick(() => {
-      const writerEl = uiStore.writerRef
-      if (writerEl?.setContentAfterInit) {
-        writerEl.setContentAfterInit(aiContent)
-      }
-    })
+    callWriter(uiStore, 'openReply', email, aiContent)
   }
 }
 

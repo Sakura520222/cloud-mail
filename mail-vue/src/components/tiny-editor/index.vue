@@ -49,7 +49,7 @@ onBeforeUnmount(() => {
 });
 
 watch(() => props.defValue, (newValue) => {
-  if (editor.value && editor.value.getContent() !== newValue) {
+  if (isInitialized.value && editor.value && editor.value.getContent() !== newValue) {
     editor.value.setContent(newValue);
   }
 });
@@ -68,21 +68,27 @@ const language = computed(() => {
 })
 
 function clearEditor() {
-  if (editor.value) {
+  if (isInitialized.value && editor.value) {
     editor.value.setContent('');
   }
 }
 
 function initTinyMCE() {
   if (window.tinymce) {
-    initEditor();
+    showLoading.value = false;
+    nextTick(() => initEditor());
   } else {
     showLoading.value = true;
     const script = document.createElement('script');
     script.src = '/tinymce/tinymce.min.js';
-    script.onload = () => initEditor();
+    script.onload = () => {
+      showLoading.value = false;
+      nextTick(() => initEditor());
+    };
+    script.onerror = () => {
+      showLoading.value = false;
+    };
     document.head.appendChild(script);
-    showLoading.value = false;
   }
 }
 
@@ -116,6 +122,7 @@ function initEditor() {
       ed.on('init', () => {
         ed.setContent(props.defValue);
         isInitialized.value = true;
+        showLoading.value = false;
       });
       ed.on('input change', () => {
         const content = ed.getContent();
@@ -155,23 +162,34 @@ function initEditor() {
 
       input.click();
     }
+  }).catch(() => {
+    showLoading.value = false;
   });
 }
 
 function focus() {
+  if (!isInitialized.value || !editor.value) {
+    return false
+  }
   nextTick(() => {
-    editor.value.focus()
+    editor.value?.focus()
   })
+  return true
 }
 
-function getContent() {
-  return editor.value.getContent()
+function getContent(options) {
+  if (!isInitialized.value || !editor.value) {
+    return ''
+  }
+  return editor.value.getContent(options)
 }
 
 function setContent(content) {
-  if (editor.value) {
+  if (isInitialized.value && editor.value) {
     editor.value.setContent(content)
+    return true
   }
+  return false
 }
 
 
@@ -180,6 +198,7 @@ function destroyEditor() {
     editor.value.destroy();
     editor.value = null;
   }
+  isInitialized.value = false;
 }
 </script>
 
