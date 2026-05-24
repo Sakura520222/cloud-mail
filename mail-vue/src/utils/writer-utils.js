@@ -1,5 +1,11 @@
+let writerInstance = null
+
+export function setWriterRef(writerRef) {
+  writerInstance = writerRef?.value || writerRef || null
+}
+
 export function getWriterRef(uiStore) {
-  const writerRef = uiStore.writerRef
+  const writerRef = writerInstance || uiStore?.writerRef
   return writerRef?.value || writerRef || null
 }
 

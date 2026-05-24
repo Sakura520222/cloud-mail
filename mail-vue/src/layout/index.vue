@@ -28,6 +28,7 @@ import Main from '@/layout/main/index.vue'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import {useUiStore} from "@/store/ui.js";
 import writer from '@/layout/write/index.vue'
+import {setWriterRef} from "@/utils/writer-utils.js";
 
 const uiStore = useUiStore();
 const writerRef = ref({})
@@ -38,7 +39,8 @@ const handleResize = () => {
 }
 
 onMounted(() => {
-  uiStore.writerRef = writerRef.value
+  setWriterRef(writerRef)
+  uiStore.writerRef = writerRef
 
   window.addEventListener('resize', handleResize)
   handleResize()
