@@ -38,7 +38,7 @@ const handleResize = () => {
 }
 
 onMounted(() => {
-  uiStore.writerRef = writerRef
+  uiStore.writerRef = writerRef.value
 
   window.addEventListener('resize', handleResize)
   handleResize()
