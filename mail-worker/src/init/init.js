@@ -63,12 +63,43 @@ const dbInit = {
 
 		try {
 			await c.env.db.prepare(`
-			INSERT INTO perm (name, perm_key, pid, type, sort) VALUES
-			('AI 助手', NULL, 0, 1, 7),
-			('AI 使用', 'ai:use', (SELECT perm_id FROM perm WHERE name = 'AI 助手'), 2, 0)
+				DELETE FROM role_perm
+				WHERE perm_id IN (
+					SELECT perm_id FROM perm
+					WHERE name = 'AI 助手' AND pid = 0
+					AND perm_id NOT IN (SELECT MIN(perm_id) FROM perm WHERE name = 'AI 助手' AND pid = 0)
+				)
+			`).run();
+			await c.env.db.prepare(`
+				DELETE FROM role_perm
+				WHERE perm_id IN (
+					SELECT perm_id FROM perm
+					WHERE perm_key = 'ai:use'
+					AND perm_id NOT IN (SELECT MIN(perm_id) FROM perm WHERE perm_key = 'ai:use')
+				)
+			`).run();
+			await c.env.db.prepare(`
+				DELETE FROM perm
+				WHERE name = 'AI 助手' AND pid = 0
+				AND perm_id NOT IN (SELECT MIN(perm_id) FROM perm WHERE name = 'AI 助手' AND pid = 0)
+			`).run();
+			await c.env.db.prepare(`
+				DELETE FROM perm
+				WHERE perm_key = 'ai:use'
+				AND perm_id NOT IN (SELECT MIN(perm_id) FROM perm WHERE perm_key = 'ai:use')
+			`).run();
+			await c.env.db.prepare(`
+				INSERT INTO perm (name, perm_key, pid, type, sort)
+				SELECT 'AI 助手', NULL, 0, 1, 7
+				WHERE NOT EXISTS (SELECT 1 FROM perm WHERE name = 'AI 助手' AND pid = 0)
+			`).run();
+			await c.env.db.prepare(`
+				INSERT INTO perm (name, perm_key, pid, type, sort)
+				SELECT 'AI 使用', 'ai:use', (SELECT perm_id FROM perm WHERE name = 'AI 助手' AND pid = 0 LIMIT 1), 2, 0
+				WHERE NOT EXISTS (SELECT 1 FROM perm WHERE perm_key = 'ai:use')
 			`).run();
 		} catch (e) {
-			console.warn(`跳过数据：${e.message}`);
+			console.warn(`跳过AI权限：${e.message}`);
 		}
 	},
 
