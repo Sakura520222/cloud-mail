@@ -52,12 +52,12 @@ const routes = [
                 }
             },
             {
-                path: '/report',
-                name: 'report',
-                component: () => import('@/views/report/index.vue'),
+                path: '/analysis',
+                name: 'analysis',
+                component: () => import('@/views/analysis/index.vue'),
                 meta: {
-                    title: 'report',
-                    name: 'report',
+                    title: 'analytics',
+                    name: 'analysis',
                     menu: true
                 }
             },

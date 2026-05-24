@@ -371,7 +371,9 @@ const en = {
     totalEmails: 'Total Emails',
     unread: 'Unread',
     noData: 'No Data',
-    generatingAnalysis: 'Generating AI analysis...'
+    generatingAnalysis: 'Generating AI analysis...',
+    globalOverview: 'Global Overview',
+    emailReport: 'Email Report'
 }
 
 export default en

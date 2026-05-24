@@ -26,24 +26,14 @@
           <Icon icon="solar:star-line-duotone" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('starred')}}</span>
         </el-menu-item>
-        <el-menu-item @click="router.push({name: 'report'})" index="report"
-                      :class="route.meta.name === 'report' ? 'choose-item' : ''">
-          <Icon icon="mdi:chart-timeline-variant" width="20" height="20" />
-          <span class="menu-name" style="margin-left: 21px">{{$t('report')}}</span>
-        </el-menu-item>
         <el-menu-item @click="router.push({name: 'setting'})" index="setting"
                       :class="route.meta.name === 'setting' ? 'choose-item' : ''">
           <Icon icon="fluent:settings-48-regular" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('settings')}}</span>
         </el-menu-item>
-        <div class="manage-title" v-perm="['all-email:query','user:query','role:query','setting:query','analysis:query','reg-key:query']">
+        <div class="manage-title" v-perm="['all-email:query','user:query','role:query','setting:query','reg-key:query']">
           <div>{{$t('manage')}}</div>
         </div>
-        <el-menu-item @click="router.push({name: 'analysis'})" index="analysis" v-perm="'analysis:query'"
-                      :class="route.meta.name === 'analysis' ? 'choose-item' : ''">
-          <Icon icon="fluent:data-pie-20-regular" width="24" height="24" />
-          <span class="menu-name" style="margin-left: 18px">{{$t('analytics')}}</span>
-        </el-menu-item>
         <el-menu-item @click="router.push({name: 'user'})" index="setting" v-perm="'user:query'"
                       :class="route.meta.name === 'user' ? 'choose-item' : ''">
           <Icon icon="si:user-alt-2-line" width="20" height="20" />

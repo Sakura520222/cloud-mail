@@ -371,6 +371,8 @@ const zh = {
     totalEmails: '邮件总数',
     unread: '未读',
     noData: '暂无数据',
-    generatingAnalysis: '正在生成 AI 分析...'
+    generatingAnalysis: '正在生成 AI 分析...',
+    globalOverview: '全局概览',
+    emailReport: '邮件报告'
 }
 export default zh

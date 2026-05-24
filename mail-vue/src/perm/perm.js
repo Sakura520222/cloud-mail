@@ -109,14 +109,4 @@ const routers = {
             menu: true
         }
     }],
-    'analysis:query': [{
-        path: '/analysis',
-        name: 'analysis',
-        component: () => import('@/views/analysis/index.vue'),
-        meta: {
-            title: 'analytics',
-            name: 'analysis',
-            menu: true
-        }
-    }]
 }
