@@ -4,6 +4,16 @@ import result from '../model/result';
 import BizError from '../error/biz-error';
 import permService from '../service/perm-service';
 
+async function checkAdminPerm(c, user) {
+	if (user.email === c.env.admin) {
+		return;
+	}
+	const permKeys = await permService.userPermKeys(c, user.userId);
+	if (!permKeys.includes('*') && !permKeys.includes('analysis:query')) {
+		throw new BizError('unauthorized', 403);
+	}
+}
+
 app.get('/report/data', async (c) => {
 	const user = c.get('user');
 	const { year, month, timeZone, scope } = c.req.query();
@@ -15,10 +25,7 @@ app.get('/report/data', async (c) => {
 	const reportScope = scope === 'admin' ? 'admin' : 'user';
 
 	if (reportScope === 'admin') {
-		const permKeys = await permService.userPermKeys(c, user.userId);
-		if (!permKeys.includes('*') && !permKeys.includes('analysis:query')) {
-			throw new BizError('unauthorized', 403);
-		}
+		await checkAdminPerm(c, user);
 	}
 
 	const params = {
@@ -45,10 +52,7 @@ app.post('/report/refresh', async (c) => {
 	const reportScope = scope === 'admin' ? 'admin' : 'user';
 
 	if (reportScope === 'admin') {
-		const permKeys = await permService.userPermKeys(c, user.userId);
-		if (!permKeys.includes('*') && !permKeys.includes('analysis:query')) {
-			throw new BizError('unauthorized', 403);
-		}
+		await checkAdminPerm(c, user);
 	}
 
 	const params = {
