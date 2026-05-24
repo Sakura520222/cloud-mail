@@ -9,7 +9,7 @@ export const useTagStore = defineStore('tag', {
     actions: {
         async refreshTags() {
             const res = await tagList()
-            this.tags = res.data || []
+            this.tags = res || []
         },
         setCurrentTag(tagId) {
             this.currentTagId = tagId

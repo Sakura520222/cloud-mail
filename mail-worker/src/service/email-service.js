@@ -1023,7 +1023,7 @@ const emailService = {
 		if (!emailId) emailId = 9999999999;
 		if (size > 50) size = 50;
 
-		const list = await orm(c).select({
+		const listQuery = orm(c).select({
 			...email,
 			starId: star.starId
 		}).from(email)
@@ -1035,17 +1035,21 @@ const emailService = {
 				lt(email.emailId, emailId)
 			))
 			.orderBy(desc(email.emailId))
-			.limit(size)
-			.all();
+			.limit(size);
 
-		const totalRow = await orm(c).select({ total: count() }).from(email)
-			.where(and(eq(email.userId, userId), eq(email.folderId, folderId), eq(email.isDel, isDel.NORMAL)))
-			.get();
+		const totalQuery = orm(c).select({ total: count() }).from(email)
+			.where(and(eq(email.userId, userId), eq(email.folderId, folderId), eq(email.isDel, isDel.NORMAL)));
+
+		let [list, totalRow] = await Promise.all([listQuery, totalQuery]);
 
 		list.forEach(item => { item.isStar = item.starId != null ? 1 : 0; });
 		await this.emailAddAtt(c, list);
 		await this.emailAddTags(c, list);
-		return { list, total: totalRow.total };
+		let latestEmail = list.length > 0 ? list[0] : null;
+		if (!latestEmail) {
+			latestEmail = { emailId: 0 };
+		}
+		return { list, total: totalRow.total, latestEmail };
 	},
 
 	async listByTag(c, params, userId) {
@@ -1080,7 +1084,11 @@ const emailService = {
 		list.forEach(item => { item.isStar = item.starId != null ? 1 : 0; });
 		await this.emailAddAtt(c, list);
 		await this.emailAddTags(c, list);
-		return { list, total: totalRow.total };
+		let latestEmail = list.length > 0 ? list[0] : null;
+		if (!latestEmail) {
+			latestEmail = { emailId: 0 };
+		}
+		return { list, total: totalRow.total, latestEmail };
 	},
 
 	async emailAddTags(c, list) {

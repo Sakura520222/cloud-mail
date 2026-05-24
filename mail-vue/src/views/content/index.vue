@@ -289,9 +289,9 @@ async function handleAiClassify() {
   try {
     ElMessage.info(t('aiClassifying'))
     const res = await aiClassifyReq(email.emailId)
-    if (res.data) {
-      email.folderId = res.data.folder?.folderId
-      email.folderName = res.data.folder?.name
+    if (res) {
+      email.folderId = res.folder?.folderId
+      email.folderName = res.folder?.name
       ElMessage.success(t('aiClassifySuccess'))
     }
   } catch (e) {
@@ -304,8 +304,8 @@ async function handleAiTag() {
   try {
     ElMessage.info(t('aiTagging'))
     const res = await aiTagReq(email.emailId)
-    if (res.data && res.data.length > 0) {
-      email.tagList = res.data.map(tg => ({
+    if (res && res.length > 0) {
+      email.tagList = res.map(tg => ({
         tagId: tg.tagId,
         tagName: tg.name,
         tagColor: tg.color

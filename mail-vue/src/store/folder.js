@@ -9,7 +9,7 @@ export const useFolderStore = defineStore('folder', {
     actions: {
         async refreshFolders() {
             const res = await folderList()
-            this.folders = res.data || []
+            this.folders = res || []
         },
         setCurrentFolder(folderId) {
             this.currentFolderId = folderId

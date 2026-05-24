@@ -256,22 +256,23 @@ Use clear formatting with headers and bullet points. Be specific with numbers fr
 		const folderNames = folders.map(f => f.name);
 
 		const subject = emailData.subject || '';
-		const body = emailUtils.htmlToText(emailData.content || emailData.html || '').slice(0, 3000);
+		const body = emailUtils.htmlToText(emailData.content || emailData.html || '').slice(0, 2000);
 		const from = emailData.from?.address || emailData.sendEmail || '';
 
-		const systemPrompt = `You are an email classifier. Analyze the email and classify it into one of the user's existing folders, or suggest a new folder name if none match.
-The user's existing folders are: ${folderNames.length > 0 ? folderNames.join(', ') : '(none)'}.
-Return ONLY a JSON object: {"folderName": "name", "isNew": true/false}
-If the email matches an existing folder, set isNew to false and use the exact folder name. If not, set isNew to true and suggest a concise folder name.`;
+		let folderListStr = folderNames.length > 0 ? folderNames.map((n, i) => `${i + 1}.${n}`).join(' ') : 'empty';
 
-		const userContent = `From: ${from}\nSubject: ${subject}\n\n${body}`;
+		const systemPrompt = `Classify email into a folder. Existing folders: ${folderListStr}. Reply ONLY JSON {"folderName":"xxx","isNew":false}. If no folder matches, set isNew true and suggest a short folder name in the email's language.`;
+
+		const userContent = `From: ${from}\nSubject: ${subject}\n${body}`;
 
 		try {
-			const result = await this.callAI(aiConfig, c, [
+			const raw = await this.callAI(aiConfig, c, [
 				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content: userContent }
-			], 100);
-			const parsed = JSON.parse(result);
+			], 80);
+			const jsonStr = raw.match(/\{[\s\S]*?\}/)?.[0];
+			if (!jsonStr) return null;
+			const parsed = JSON.parse(jsonStr);
 			if (!parsed.folderName) return null;
 			return parsed;
 		} catch (e) {
@@ -283,25 +284,26 @@ If the email matches an existing folder, set isNew to false and use the exact fo
 	async tagEmail(c, emailData, userId) {
 		const aiConfig = await this.getAIConfig(c);
 		const tags = await tagService.list(c, userId);
-		const tagNames = tags.map(t => ({ name: t.name, color: t.color }));
+		const tagNames = tags.map(t => t.name);
 
 		const subject = emailData.subject || '';
-		const body = emailUtils.htmlToText(emailData.content || emailData.html || '').slice(0, 3000);
+		const body = emailUtils.htmlToText(emailData.content || emailData.html || '').slice(0, 2000);
 		const from = emailData.from?.address || emailData.sendEmail || '';
 
-		const systemPrompt = `You are an email tagging assistant. Analyze the email and assign relevant tags.
-The user's existing tags are: ${JSON.stringify(tagNames)}.
-Return ONLY a JSON array of tags: [{"name":"tag name","color":"#hex","isNew":true/false}]
-Use existing tags where they fit (set isNew=false, use exact name). Suggest new tags if needed (set isNew=true, provide a color hex). Keep tags concise (1-3 tags max).`;
+		let tagListStr = tagNames.length > 0 ? tagNames.join(',') : 'empty';
 
-		const userContent = `From: ${from}\nSubject: ${subject}\n\n${body}`;
+		const systemPrompt = `Tag this email. Existing tags: ${tagListStr}. Reply ONLY JSON array [{"name":"tag","color":"#hex","isNew":false}]. Use existing tags first. Add 1-3 tags. Suggest new tags in the email's language if needed.`;
+
+		const userContent = `From: ${from}\nSubject: ${subject}\n${body}`;
 
 		try {
-			const result = await this.callAI(aiConfig, c, [
+			const raw = await this.callAI(aiConfig, c, [
 				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content: userContent }
-			], 200);
-			const parsed = JSON.parse(result);
+			], 150);
+			const jsonStr = raw.match(/\[[\s\S]*?\]/)?.[0];
+			if (!jsonStr) return [];
+			const parsed = JSON.parse(jsonStr);
 			if (!Array.isArray(parsed)) return [];
 			return parsed.slice(0, 5);
 		} catch (e) {
