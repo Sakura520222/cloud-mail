@@ -356,6 +356,21 @@ const zh = {
     aiInputPrompt: '请描述你想生成的邮件内容...',
     aiLanguage: '中文',
     aiCopySuccess: '复制成功',
-    aiCopyFail: '复制失败'
+    aiCopyFail: '复制失败',
+    report: '邮件报告',
+    selectMonth: '选择月份',
+    fullSiteAnalysis: '全站分析',
+    refreshReport: '刷新报告',
+    aiAnalysis: 'AI 分析',
+    emailTrend: '收发趋势',
+    topSenders: 'Top 发件人',
+    topRecipients: 'Top 收件人',
+    activityDistribution: '活跃时间分布',
+    statusBreakdown: '状态分布',
+    accountStats: '账号统计',
+    totalEmails: '邮件总数',
+    unread: '未读',
+    noData: '暂无数据',
+    generatingAnalysis: '正在生成 AI 分析...'
 }
 export default zh

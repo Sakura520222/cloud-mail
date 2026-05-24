@@ -79,7 +79,14 @@ const aiService = {
 			summarize: `You are a professional email summarizer. Provide a concise summary of the following email. Extract the key points, action items, and important details. Output the summary in ${language}.`,
 			reply: `You are a professional email reply assistant. Based on the following email content, generate an appropriate and professional reply. The reply should be polite, relevant, and address all key points in the original email. Output the reply in ${language}. Only output the reply body without subject line.`,
 			polish: `You are a professional writing assistant. Improve and polish the following email content to make it more professional, clear, and well-structured. Fix any grammar or spelling errors. Maintain the original meaning and intent. Only output the polished content without any explanation.`,
-			generate: `You are a professional email writer. Based on the user's description, generate a well-structured and professional email. Output the email content in ${language}. Only output the email body without subject line.`
+			generate: `You are a professional email writer. Based on the user's description, generate a well-structured and professional email. Output the email content in ${language}. Only output the email body without subject line.`,
+			report: `You are a professional email analytics expert. Based on the provided email statistics, generate a comprehensive analysis report in ${language}. The report should include:
+1. **Overview**: A brief summary of the email activity for the period.
+2. **Key Trends**: Notable patterns in sending/receiving activity (peak days, growth/decline).
+3. **Communication Insights**: Analysis of top contacts and communication patterns.
+4. **Activity Patterns**: Observations about when emails are most active (time-of-day patterns).
+5. **Recommendations**: Actionable suggestions for improving email management.
+Use clear formatting with headers and bullet points. Be specific with numbers from the data. Write in a professional but accessible tone.`
 		};
 		return prompts[action] || prompts.generate;
 	},
@@ -106,7 +113,7 @@ const aiService = {
 	async chatStream(c, params) {
 		const { action, content, subject, prompt, metadata } = params;
 
-		if (!action || !['translate', 'summarize', 'reply', 'polish', 'generate'].includes(action)) {
+		if (!action || !['translate', 'summarize', 'reply', 'polish', 'generate', 'report'].includes(action)) {
 			throw new BizError(t('invalidAiAction'), 400);
 		}
 
@@ -117,6 +124,8 @@ const aiService = {
 		let userContent = '';
 		if (action === 'generate') {
 			userContent = prompt || '';
+		} else if (action === 'report') {
+			userContent = content || '';
 		} else {
 			if (subject) {
 				userContent += `Subject: ${subject}\n`;

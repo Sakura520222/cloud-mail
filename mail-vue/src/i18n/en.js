@@ -356,7 +356,22 @@ const en = {
     aiInputPrompt: 'Describe the email content you want to generate...',
     aiLanguage: 'English',
     aiCopySuccess: 'Copied',
-    aiCopyFail: 'Copy failed'
+    aiCopyFail: 'Copy failed',
+    report: 'Email Report',
+    selectMonth: 'Select Month',
+    fullSiteAnalysis: 'Full Site Analysis',
+    refreshReport: 'Refresh',
+    aiAnalysis: 'AI Analysis',
+    emailTrend: 'Email Trend',
+    topSenders: 'Top Senders',
+    topRecipients: 'Top Recipients',
+    activityDistribution: 'Activity Distribution',
+    statusBreakdown: 'Status Breakdown',
+    accountStats: 'Account Statistics',
+    totalEmails: 'Total Emails',
+    unread: 'Unread',
+    noData: 'No Data',
+    generatingAnalysis: 'Generating AI analysis...'
 }
 
 export default en
