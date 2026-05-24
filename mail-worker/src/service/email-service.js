@@ -3,6 +3,8 @@ import email from '../entity/email';
 import { attConst, emailConst, isDel, settingConst } from '../const/entity-const';
 import { and, desc, eq, gt, inArray, lt, count, asc, sql, ne, or, like, lte, gte } from 'drizzle-orm';
 import { star } from '../entity/star';
+import { tag } from '../entity/tag';
+import { emailTag } from '../entity/email-tag';
 import settingService from './setting-service';
 import accountService from './account-service';
 import BizError from '../error/biz-error';
@@ -22,18 +24,21 @@ import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
+import tagService from './tag-service';
+import emailTagService from './email-tag-service';
 
 const emailService = {
 
 	async list(c, params, userId) {
 
-		let { emailId, type, accountId, size, timeSort, allReceive } = params;
+		let { emailId, type, accountId, size, timeSort, allReceive, folderId } = params;
 
 		size = Number(size);
 		emailId = Number(emailId);
 		timeSort = Number(timeSort);
 		accountId = Number(accountId);
 		allReceive = Number(allReceive);
+		folderId = folderId !== undefined && folderId !== null && folderId !== '' ? Number(folderId) : undefined;
 
 		if (size > 50) {
 			size = 50;
@@ -70,14 +75,15 @@ const emailService = {
 				account,
 				eq(account.accountId, email.accountId)
 			)
-			.where(
+				.where(
 				and(
 					allReceive ? eq(1,1) : eq(email.accountId, accountId),
 					eq(email.userId, userId),
 					timeSort ? gt(email.emailId, emailId) : lt(email.emailId, emailId),
 					eq(email.type, type),
 					eq(email.isDel, isDel.NORMAL),
-					eq(account.isDel, isDel.NORMAL)
+					eq(account.isDel, isDel.NORMAL),
+					folderId !== undefined ? eq(email.folderId, folderId) : undefined
 				)
 			);
 
@@ -123,6 +129,8 @@ const emailService = {
 
 		await this.emailAddAtt(c, list);
 
+		await this.emailAddTags(c, list);
+
 		if (!latestEmail) {
 			latestEmail = {
 				emailId: 0,
@@ -137,6 +145,7 @@ const emailService = {
 	async delete(c, params, userId) {
 		const { emailIds } = params;
 		const emailIdList = emailIds.split(',').map(Number);
+		await emailTagService.removeByEmailIds(c, emailIdList);
 		await orm(c).update(email).set({ isDel: isDel.DELETE }).where(
 			and(
 				eq(email.userId, userId),
@@ -986,6 +995,101 @@ const emailService = {
 	async read(c, params, userId) {
 		const { emailIds } = params;
 		await orm(c).update(email).set({ unread: emailConst.unread.READ }).where(and(eq(email.userId, userId), inArray(email.emailId, emailIds)));
+	},
+
+	async moveToFolder(c, params, userId) {
+		const { emailIds, folderId } = params;
+		const emailIdList = emailIds.split(',').map(Number);
+		await orm(c).update(email).set({ folderId: folderId || null }).where(
+			and(eq(email.userId, userId), inArray(email.emailId, emailIdList))
+		).run();
+	},
+
+	async setEmailTags(c, params, userId) {
+		const { emailId, tagIds } = params;
+		const emailRow = await this.selectById(c, emailId);
+		if (!emailRow || emailRow.userId !== userId) {
+			throw new BizError(t('emailNotExist'));
+		}
+		await emailTagService.setTags(c, emailId, tagIds);
+	},
+
+	async listByFolder(c, params, userId) {
+		let { folderId, emailId, size } = params;
+		emailId = Number(emailId);
+		size = Number(size);
+		folderId = Number(folderId);
+
+		if (!emailId) emailId = 9999999999;
+		if (size > 50) size = 50;
+
+		const list = await orm(c).select({
+			...email,
+			starId: star.starId
+		}).from(email)
+			.leftJoin(star, and(eq(star.emailId, email.emailId), eq(star.userId, userId)))
+			.where(and(
+				eq(email.userId, userId),
+				eq(email.folderId, folderId),
+				eq(email.isDel, isDel.NORMAL),
+				lt(email.emailId, emailId)
+			))
+			.orderBy(desc(email.emailId))
+			.limit(size)
+			.all();
+
+		const totalRow = await orm(c).select({ total: count() }).from(email)
+			.where(and(eq(email.userId, userId), eq(email.folderId, folderId), eq(email.isDel, isDel.NORMAL)))
+			.get();
+
+		list.forEach(item => { item.isStar = item.starId != null ? 1 : 0; });
+		await this.emailAddAtt(c, list);
+		await this.emailAddTags(c, list);
+		return { list, total: totalRow.total };
+	},
+
+	async listByTag(c, params, userId) {
+		let { tagId, emailId, size } = params;
+		emailId = Number(emailId);
+		size = Number(size);
+		tagId = Number(tagId);
+
+		if (!emailId) emailId = 9999999999;
+		if (size > 50) size = 50;
+
+		const list = await orm(c).select({
+			...email,
+			starId: star.starId
+		}).from(email)
+			.leftJoin(star, and(eq(star.emailId, email.emailId), eq(star.userId, userId)))
+			.innerJoin(emailTag, and(eq(emailTag.emailId, email.emailId), eq(emailTag.tagId, tagId)))
+			.where(and(
+				eq(email.userId, userId),
+				eq(email.isDel, isDel.NORMAL),
+				lt(email.emailId, emailId)
+			))
+			.orderBy(desc(email.emailId))
+			.limit(size)
+			.all();
+
+		const totalRow = await orm(c).select({ total: count() }).from(email)
+			.innerJoin(emailTag, and(eq(emailTag.emailId, email.emailId), eq(emailTag.tagId, tagId)))
+			.where(and(eq(email.userId, userId), eq(email.isDel, isDel.NORMAL)))
+			.get();
+
+		list.forEach(item => { item.isStar = item.starId != null ? 1 : 0; });
+		await this.emailAddAtt(c, list);
+		await this.emailAddTags(c, list);
+		return { list, total: totalRow.total };
+	},
+
+	async emailAddTags(c, list) {
+		const emailIds = list.map(item => item.emailId);
+		if (emailIds.length === 0) return;
+		const tagRows = await tagService.selectByEmailIds(c, emailIds);
+		list.forEach(emailRow => {
+			emailRow.tagList = tagRows.filter(t => t.emailId === emailRow.emailId);
+		});
 	}
 };
 

@@ -135,6 +135,14 @@ export const settingConst = {
 	authRefresh: {
 		OPEN: 1,
 		CLOSE: 0
+	},
+	aiClassify: {
+		OPEN: 0,
+		CLOSE: 1
+	},
+	aiTag: {
+		OPEN: 0,
+		CLOSE: 1
 	}
 }
 

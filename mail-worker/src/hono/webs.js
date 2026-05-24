@@ -22,4 +22,6 @@ import '../api/telegram-api'
 import '../api/oauth-api'
 import '../api/ai-api'
 import '../api/report-api'
+import '../api/folder-api'
+import '../api/tag-api'
 export default app;

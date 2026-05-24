@@ -17,6 +17,8 @@
           <div class="ai-action-item" @click="triggerAiAction('translate')">{{ $t('aiTranslate') }}</div>
           <div class="ai-action-item" @click="triggerAiAction('summarize')">{{ $t('aiSummarize') }}</div>
           <div class="ai-action-item" @click="triggerAiAction('reply')">{{ $t('aiReply') }}</div>
+          <div class="ai-action-item" v-perm="'ai:classify'" @click="handleAiClassify">{{ $t('aiClassify') }}</div>
+          <div class="ai-action-item" v-perm="'ai:tag'" @click="handleAiTag">{{ $t('aiTagEmail') }}</div>
         </div>
       </el-popover>
     </div>
@@ -38,6 +40,17 @@
               <div class="receive"><span class="source">{{$t('recipient')}}</span><span class="receive-email">{{  formateReceive(email.recipient) }}</span></div>
               <div class="date">
                 <div>{{ formatDetailDate(email.createTime) }}</div>
+              </div>
+              <!-- Folder & Tags display -->
+              <div class="email-folder-tags" v-if="email.folderName || (email.tagList && email.tagList.length > 0)">
+                <span class="folder-badge" v-if="email.folderName" @click="showFolderDialog = true">
+                  <Icon icon="mdi:folder-outline" width="14" height="14" />
+                  {{email.folderName}}
+                </span>
+                <span class="tag-badge" v-for="tg in (email.tagList || [])" :key="tg.tagId"
+                      :style="{borderColor: tg.tagColor, color: tg.tagColor}">
+                  {{tg.tagName}}
+                </span>
               </div>
             </div>
             <el-alert v-if="email.status === 3" :closable="false" :title="toMessage(email.message)" class="email-msg" type="error" show-icon />
@@ -98,12 +111,15 @@ import AiDialog from '@/components/ai-dialog/index.vue'
 import {reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {emailDelete, emailRead} from "@/request/email.js";
+import {emailDelete, emailRead, emailMoveFolder, emailSetTags} from "@/request/email.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
 import {useAccountStore} from "@/store/account.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {starAdd, starCancel} from "@/request/star.js";
+import {aiClassify as aiClassifyReq, aiTagEmail as aiTagReq} from "@/request/ai.js";
+import {folderList} from "@/request/folder.js";
+import {tagList} from "@/request/tag.js";
 import {getExtName, formatBytes} from "@/utils/file-utils.js";
 import {cvtR2Url,toOssDomain} from "@/utils/convert.js";
 import {getIconByName} from "@/utils/icon-utils.js";
@@ -264,6 +280,41 @@ const handleDelete = () => {
 
     router.back()
   })
+}
+
+const showFolderDialog = ref(false)
+
+async function handleAiClassify() {
+  aiPopoverVisible.value = false
+  try {
+    ElMessage.info(t('aiClassifying'))
+    const res = await aiClassifyReq(email.emailId)
+    if (res.data) {
+      email.folderId = res.data.folder?.folderId
+      email.folderName = res.data.folder?.name
+      ElMessage.success(t('aiClassifySuccess'))
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function handleAiTag() {
+  aiPopoverVisible.value = false
+  try {
+    ElMessage.info(t('aiTagging'))
+    const res = await aiTagReq(email.emailId)
+    if (res.data && res.data.length > 0) {
+      email.tagList = res.data.map(tg => ({
+        tagId: tg.tagId,
+        tagName: tg.name,
+        tagColor: tg.color
+      }))
+      ElMessage.success(t('aiTagSuccess'))
+    }
+  } catch (e) {
+    console.error(e)
+  }
 }
 </script>
 <style scoped lang="scss">
@@ -491,6 +542,36 @@ const handleDelete = () => {
   &:hover {
     background: var(--el-fill-color-light);
   }
+}
+
+.email-folder-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.folder-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--el-fill-color);
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+  &:hover {
+    background: var(--el-fill-color-dark);
+  }
+}
+
+.tag-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid;
 }
 
 

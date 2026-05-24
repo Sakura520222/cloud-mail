@@ -55,6 +55,8 @@ export const setting = sqliteTable('setting', {
 	aiCodeFilter: text('ai_code_filter').default('').notNull(),
 	aiApiUrl: text('ai_api_url').default('').notNull(),
 	aiApiKey: text('ai_api_key').default('').notNull(),
-	aiModel: text('ai_model').default('').notNull()
+	aiModel: text('ai_model').default('').notNull(),
+	aiClassify: integer('ai_classify').default(1).notNull(),
+	aiTag: integer('ai_tag').default(1).notNull()
 });
 export default setting

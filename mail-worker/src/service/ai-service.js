@@ -1,6 +1,9 @@
 import emailUtils from '../utils/email-utils';
 import { settingConst } from '../const/entity-const';
 import settingService from './setting-service';
+import folderService from './folder-service';
+import tagService from './tag-service';
+import emailTagService from './email-tag-service';
 import BizError from '../error/biz-error';
 import { stream } from 'hono/streaming';
 import { t } from '../i18n/i18n';
@@ -245,6 +248,103 @@ Use clear formatting with headers and bullet points. Be specific with numbers fr
 				}
 			}
 		}
+	},
+
+	async classifyEmail(c, emailData, userId) {
+		const aiConfig = await this.getAIConfig(c);
+		const folders = await folderService.list(c, userId);
+		const folderNames = folders.map(f => f.name);
+
+		const subject = emailData.subject || '';
+		const body = emailUtils.htmlToText(emailData.content || emailData.html || '').slice(0, 3000);
+		const from = emailData.from?.address || emailData.sendEmail || '';
+
+		const systemPrompt = `You are an email classifier. Analyze the email and classify it into one of the user's existing folders, or suggest a new folder name if none match.
+The user's existing folders are: ${folderNames.length > 0 ? folderNames.join(', ') : '(none)'}.
+Return ONLY a JSON object: {"folderName": "name", "isNew": true/false}
+If the email matches an existing folder, set isNew to false and use the exact folder name. If not, set isNew to true and suggest a concise folder name.`;
+
+		const userContent = `From: ${from}\nSubject: ${subject}\n\n${body}`;
+
+		try {
+			const result = await this.callAI(aiConfig, c, [
+				{ role: 'system', content: systemPrompt },
+				{ role: 'user', content: userContent }
+			], 100);
+			const parsed = JSON.parse(result);
+			if (!parsed.folderName) return null;
+			return parsed;
+		} catch (e) {
+			console.error('AI classify error:', e);
+			return null;
+		}
+	},
+
+	async tagEmail(c, emailData, userId) {
+		const aiConfig = await this.getAIConfig(c);
+		const tags = await tagService.list(c, userId);
+		const tagNames = tags.map(t => ({ name: t.name, color: t.color }));
+
+		const subject = emailData.subject || '';
+		const body = emailUtils.htmlToText(emailData.content || emailData.html || '').slice(0, 3000);
+		const from = emailData.from?.address || emailData.sendEmail || '';
+
+		const systemPrompt = `You are an email tagging assistant. Analyze the email and assign relevant tags.
+The user's existing tags are: ${JSON.stringify(tagNames)}.
+Return ONLY a JSON array of tags: [{"name":"tag name","color":"#hex","isNew":true/false}]
+Use existing tags where they fit (set isNew=false, use exact name). Suggest new tags if needed (set isNew=true, provide a color hex). Keep tags concise (1-3 tags max).`;
+
+		const userContent = `From: ${from}\nSubject: ${subject}\n\n${body}`;
+
+		try {
+			const result = await this.callAI(aiConfig, c, [
+				{ role: 'system', content: systemPrompt },
+				{ role: 'user', content: userContent }
+			], 200);
+			const parsed = JSON.parse(result);
+			if (!Array.isArray(parsed)) return [];
+			return parsed.slice(0, 5);
+		} catch (e) {
+			console.error('AI tag error:', e);
+			return [];
+		}
+	},
+
+	async callAI(aiConfig, c, messages, maxTokens) {
+		if (aiConfig.provider === 'external') {
+			const response = await fetch(aiConfig.apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${aiConfig.apiKey}`
+				},
+				body: JSON.stringify({
+					model: aiConfig.model,
+					messages,
+					max_tokens: maxTokens,
+					temperature: 0
+				})
+			});
+			if (!response.ok) throw new Error(`AI API error: ${response.status}`);
+			const data = await response.json();
+			return data.choices?.[0]?.message?.content || '';
+		} else {
+			const ai = c.env.ai;
+			const result = await ai.run(aiConfig.model, {
+				messages,
+				max_tokens: maxTokens,
+				temperature: 0
+			});
+			return typeof result === 'string' ? result : result?.response || '';
+		}
+	},
+
+	shouldAutoClassify(aiClassify) {
+		return aiClassify === settingConst.aiClassify.OPEN;
+	},
+
+	shouldAutoTag(aiTag) {
+		return aiTag === settingConst.aiTag.OPEN;
 	}
 };
 

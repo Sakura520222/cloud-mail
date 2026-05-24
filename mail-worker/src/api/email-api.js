@@ -34,3 +34,23 @@ app.put('/email/read', async (c) => {
 	return c.json(result.ok());
 })
 
+app.put('/email/move-folder', async (c) => {
+	await emailService.moveToFolder(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
+app.put('/email/set-tags', async (c) => {
+	await emailService.setEmailTags(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
+app.get('/email/list-by-folder', async (c) => {
+	const data = await emailService.listByFolder(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
+
+app.get('/email/list-by-tag', async (c) => {
+	const data = await emailService.listByTag(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
+

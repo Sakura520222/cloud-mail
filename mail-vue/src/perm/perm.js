@@ -109,4 +109,24 @@ const routers = {
             menu: true
         }
     }],
+    'folder:query': [{
+        path: '/folder-manage',
+        name: 'folder-manage',
+        component: () => import('@/views/folder/index.vue'),
+        meta: {
+            title: 'folderManage',
+            name: 'folder-manage',
+            menu: true
+        }
+    }],
+    'tag:query': [{
+        path: '/tag-manage',
+        name: 'tag-manage',
+        component: () => import('@/views/tag/index.vue'),
+        meta: {
+            title: 'tagManage',
+            name: 'tag-manage',
+            menu: true
+        }
+    }],
 }

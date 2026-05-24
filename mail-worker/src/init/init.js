@@ -31,6 +31,7 @@ const dbInit = {
 		await this.v3_0DB(c);
 		await this.v3_1DB(c);
 		await this.v3_2DB(c);
+		await this.v3_3DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -79,6 +80,77 @@ const dbInit = {
 			`).run();
 		} catch (e) {
 			console.warn(`跳过AI使用权限：${e.message}`);
+		}
+	},
+
+	async v3_3DB(c) {
+		try {
+			await c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS folder (
+					folder_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					name TEXT NOT NULL,
+					icon TEXT NOT NULL DEFAULT '',
+					sort INTEGER NOT NULL DEFAULT 0,
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)
+			`).run();
+		} catch (e) {
+			console.warn(`跳过folder表创建：${e.message}`);
+		}
+
+		try {
+			await c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS tag (
+					tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					name TEXT NOT NULL,
+					color TEXT NOT NULL DEFAULT '#409EFF',
+					sort INTEGER NOT NULL DEFAULT 0,
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)
+			`).run();
+		} catch (e) {
+			console.warn(`跳过tag表创建：${e.message}`);
+		}
+
+		try {
+			await c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS email_tag (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					email_id INTEGER NOT NULL,
+					tag_id INTEGER NOT NULL
+				)
+			`).run();
+		} catch (e) {
+			console.warn(`跳过email_tag表创建：${e.message}`);
+		}
+
+		const ADD_COLUMN_SQL_LIST = [
+			`ALTER TABLE email ADD COLUMN folder_id INTEGER DEFAULT NULL;`,
+			`ALTER TABLE setting ADD COLUMN ai_classify INTEGER NOT NULL DEFAULT 1;`,
+			`ALTER TABLE setting ADD COLUMN ai_tag INTEGER NOT NULL DEFAULT 1;`
+		];
+		await Promise.all(ADD_COLUMN_SQL_LIST.map(sql =>
+			c.env.db.prepare(sql).run().catch(e => console.warn(`跳过字段添加：${e.message}`))
+		));
+
+		const AI_PERM_LIST = [
+			{ name: 'AI 分类', permKey: 'ai:classify', sort: 1 },
+			{ name: 'AI 自动分类', permKey: 'ai:auto-classify', sort: 2 },
+			{ name: 'AI 标签', permKey: 'ai:tag', sort: 3 },
+			{ name: 'AI 自动标签', permKey: 'ai:auto-tag', sort: 4 }
+		];
+		for (const perm of AI_PERM_LIST) {
+			try {
+				await c.env.db.prepare(`
+					INSERT INTO perm (name, perm_key, pid, type, sort)
+					SELECT '${perm.name}', '${perm.permKey}', (SELECT perm_id FROM perm WHERE name = 'AI 助手' AND pid = 0 LIMIT 1), 2, ${perm.sort}
+					WHERE NOT EXISTS (SELECT 1 FROM perm WHERE perm_key = '${perm.permKey}')
+				`).run();
+			} catch (e) {
+				console.warn(`跳过权限${perm.name}：${e.message}`);
+			}
 		}
 	},
 

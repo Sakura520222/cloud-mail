@@ -1,4 +1,5 @@
 import { useSettingStore } from '@/store/setting.js';
+import http from '@/axios/index.js';
 
 export function aiChat(params, { onMessage, onDone, onError }) {
 	const { lang } = useSettingStore();
@@ -68,4 +69,12 @@ export function aiChat(params, { onMessage, onDone, onError }) {
 	});
 
 	return controller;
+}
+
+export function aiClassify(emailId) {
+    return http.post('/ai/classify', {emailId})
+}
+
+export function aiTagEmail(emailId) {
+    return http.post('/ai/tag', {emailId})
 }

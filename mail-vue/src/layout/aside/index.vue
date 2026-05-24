@@ -26,6 +26,29 @@
           <Icon icon="solar:star-line-duotone" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('starred')}}</span>
         </el-menu-item>
+
+        <!-- Folders section -->
+        <div class="section-title" v-if="folderStore.folders.length > 0">
+          <span>{{$t('folders')}}</span>
+        </div>
+        <el-menu-item v-for="f in folderStore.folders" :key="'folder-'+f.folderId"
+                      @click="router.push({path: '/email-folder/' + f.folderId})"
+                      :class="route.params.folderId == f.folderId ? 'choose-item' : ''">
+          <Icon :icon="f.icon || 'mdi:folder-outline'" width="20" height="20" />
+          <span class="menu-name" style="margin-left: 21px">{{f.name}}</span>
+        </el-menu-item>
+
+        <!-- Tags section -->
+        <div class="section-title" v-if="tagStore.tags.length > 0">
+          <span>{{$t('tags')}}</span>
+        </div>
+        <el-menu-item v-for="tg in tagStore.tags" :key="'tag-'+tg.tagId"
+                      @click="router.push({path: '/email-tag/' + tg.tagId})"
+                      :class="route.params.tagId == tg.tagId ? 'choose-item' : ''">
+          <span class="tag-dot" :style="{background: tg.color}"></span>
+          <span class="menu-name" style="margin-left: 17px">{{tg.name}}</span>
+        </el-menu-item>
+
         <el-menu-item @click="router.push({name: 'analysis'})" index="analysis"
                       :class="route.meta.name === 'analysis' ? 'choose-item' : ''">
           <Icon icon="fluent:data-pie-20-regular" width="20" height="20" />
@@ -74,10 +97,21 @@ import router from "@/router/index.js";
 import { useRoute } from "vue-router";
 import {Icon} from "@iconify/vue";
 import {useSettingStore} from "@/store/setting.js";
+import {useFolderStore} from "@/store/folder.js";
+import {useTagStore} from "@/store/tag.js";
+import {onMounted} from "vue";
 
 const settingStore = useSettingStore();
+const folderStore = useFolderStore();
+const tagStore = useTagStore();
 const route = useRoute();
 
+onMounted(async () => {
+  try {
+    await folderStore.refreshFolders();
+    await tagStore.refreshTags();
+  } catch {}
+});
 </script>
 
 <style lang="scss" scoped>
@@ -175,5 +209,21 @@ const route = useRoute();
 
 .scroll {
 
+}
+
+.section-title {
+  padding: 10px 20px 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tag-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
 }
 </style>

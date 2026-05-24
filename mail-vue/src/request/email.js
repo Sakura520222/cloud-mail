@@ -24,3 +24,19 @@ export function emailSend(form,progress) {
         noMsg: true
     })
 }
+
+export function emailMoveFolder(emailIds, folderId) {
+    return http.put('/email/move-folder', {emailIds, folderId})
+}
+
+export function emailSetTags(emailId, tagIds) {
+    return http.put('/email/set-tags', {emailId, tagIds})
+}
+
+export function emailListByFolder(folderId, emailId, size) {
+    return http.get('/email/list-by-folder', {params: {folderId, emailId, size}})
+}
+
+export function emailListByTag(tagId, emailId, size) {
+    return http.get('/email/list-by-tag', {params: {tagId, emailId, size}})
+}

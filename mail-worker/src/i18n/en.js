@@ -52,6 +52,13 @@ const en = {
 	noOsUpBack: 'Cannot upload background: object storage not configured',
 	noOsDomainUpBack: 'Cannot upload background: object storage domain not configured',
 	starNotExistEmail: 'Starred email does not exist',
+	folderNameRequired: 'Folder name cannot be empty',
+	folderNameExists: 'Folder name already exists',
+	folderNotExist: 'Folder does not exist',
+	tagNameRequired: 'Tag name cannot be empty',
+	tagNameExists: 'Tag name already exists',
+	tagNotExist: 'Tag does not exist',
+	emailNotExist: 'Email does not exist',
 	emptyBotToken: 'Please verify that you are human',
 	botVerifyFail: 'Bot verification failed, please try again',
 	authExpired: 'Authentication has expired. Please sign in again',
@@ -105,8 +112,11 @@ const en = {
 		"设置修改": "Change Settings",
 		"发件重置": "Reset Send Count",
 		'AI 助手': 'AI Assistant',
-		'AI 使用': 'Use AI'
-	}
+	'AI 使用': 'Use AI',
+	'AI 分类': 'AI Classify',
+	'AI 自动分类': 'AI Auto Classify',
+	'AI 标签': 'AI Tag',
+	'AI 自动标签': 'AI Auto Tag'
 };
 
 export default en;

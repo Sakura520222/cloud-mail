@@ -61,6 +61,26 @@ const routes = [
                     menu: true
                 }
             },
+            {
+                path: '/email-folder/:folderId',
+                name: 'email-folder',
+                component: () => import('@/views/email/index.vue'),
+                meta: {
+                    title: 'folders',
+                    name: 'email-folder',
+                    menu: true
+                }
+            },
+            {
+                path: '/email-tag/:tagId',
+                name: 'email-tag',
+                component: () => import('@/views/email/index.vue'),
+                meta: {
+                    title: 'allTags',
+                    name: 'email-tag',
+                    menu: true
+                }
+            },
         ]
 
     },

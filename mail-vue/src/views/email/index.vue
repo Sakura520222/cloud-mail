@@ -27,9 +27,9 @@ import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import {useSettingStore} from "@/store/setting.js";
 import emailScroll from "@/components/email-scroll/index.vue"
-import {emailList, emailDelete, emailLatest, emailRead} from "@/request/email.js";
+import {emailList, emailDelete, emailLatest, emailRead, emailListByFolder, emailListByTag} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, h, onMounted, reactive, ref, watch} from "vue";
+import {defineOptions, h, onMounted, reactive, ref, watch, computed} from "vue";
 import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
@@ -47,6 +47,9 @@ const scroll = ref({})
 const params = reactive({
   timeSort: 0,
 })
+
+const isFolderView = computed(() => route.name === 'email-folder')
+const isTagView = computed(() => route.name === 'email-tag')
 
 onMounted(() => {
   emailStore.emailScroll = scroll;
@@ -139,6 +142,14 @@ function cancelStar(email) {
 }
 
 function getEmailList(emailId, size) {
+  if (isFolderView.value) {
+    const folderId = route.params.folderId;
+    return emailListByFolder(folderId, emailId, size);
+  }
+  if (isTagView.value) {
+    const tagId = route.params.tagId;
+    return emailListByTag(tagId, emailId, size);
+  }
   const accountId =  accountStore.currentAccountId;
   const allReceive = accountStore.currentAccount.allReceive;
   return emailList(accountId, allReceive, emailId, params.timeSort, size, 0).then(data => {

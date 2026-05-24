@@ -11,6 +11,9 @@ import roleService from '../service/role-service';
 import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
+import folderService from '../service/folder-service';
+import tagService from '../service/tag-service';
+import emailTagService from '../service/email-tag-service';
 
 export async function email(message, env, ctx) {
 
@@ -30,7 +33,9 @@ export async function email(message, env, ctx) {
 			blackContent,
 			blackFrom,
 			aiCode,
-			aiCodeFilter
+			aiCodeFilter,
+			aiClassify,
+			aiTag
 		} = await settingService.query({ env });
 
 		if (receive === settingConst.receive.CLOSE) {
@@ -146,6 +151,35 @@ export async function email(message, env, ctx) {
 
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
 
+		// AI 自动分类和打标
+		if (account && account.userId) {
+			try {
+				const userId = account.userId;
+				const emailData = { subject: email.subject, content: email.html, sendEmail: email.from.address, from: email.from };
+
+				if (aiService.shouldAutoClassify(aiClassify)) {
+					const classifyResult = await aiService.classifyEmail({ env }, emailData, userId);
+					if (classifyResult && classifyResult.folderName) {
+						const folderRow = await folderService.getOrCreateByName({ env }, userId, classifyResult.folderName);
+						await emailService.moveToFolder({ env }, { emailIds: String(emailRow.emailId), folderId: folderRow.folderId }, userId);
+					}
+				}
+
+				if (aiService.shouldAutoTag(aiTag)) {
+					const tagResult = await aiService.tagEmail({ env }, emailData, userId);
+					if (tagResult && tagResult.length > 0) {
+						const tagIds = [];
+						for (const tagItem of tagResult) {
+							const tagRow = await tagService.getOrCreateByName({ env }, userId, tagItem.name, tagItem.color);
+							tagIds.push(tagRow.tagId);
+						}
+						await emailTagService.addTags({ env }, emailRow.emailId, tagIds);
+					}
+				}
+			} catch (e) {
+				console.error('AI 自动分类/打标异常:', e);
+			}
+		}
 
 		if (ruleType === settingConst.ruleType.RULE) {
 
