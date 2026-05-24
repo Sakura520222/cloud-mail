@@ -52,7 +52,7 @@
           <div class="att-clear" @click="clearContent">
             <Icon icon="icon-park-outline:clear-format" width="24" height="24 "/>
           </div>
-          <el-popover v-perm="'ai:use'" placement="bottom" trigger="click" :width="120" v-model:visible="writeAiPopoverVisible">
+          <el-popover v-perm="'ai:use'" teleported placement="bottom" trigger="click" :width="120" v-model:visible="writeAiPopoverVisible">
             <template #reference>
               <div class="att-add">
                 <Icon icon="fluent:brain-sparkle-24-regular" width="24" height="24"/>
@@ -106,6 +106,7 @@
       :action="aiAction"
       :content="aiContent"
       :subject="form.subject"
+      :metadata="aiMetadata"
       :show-insert="true"
       :prompt-visible="aiAction === 'generate'"
       @insert="handleAiInsertToEditor"
@@ -155,6 +156,7 @@ const mySelect = ref()
 const aiDialogVisible = ref(false)
 const aiAction = ref('')
 const aiContent = ref('')
+const aiMetadata = ref({})
 let selectStatus = false
 const backReply = reactive({
   receiveEmail: [],
@@ -335,6 +337,10 @@ function handleWriteAiAction(command) {
     aiContent.value = safeGetContent()
   } else {
     aiContent.value = ''
+  }
+  aiMetadata.value = {
+    from: `${form.name} <${form.sendEmail}>`,
+    to: form.receiveEmail.join(', ')
   }
   aiDialogVisible.value = true
 }

@@ -104,7 +104,7 @@ const aiService = {
 	},
 
 	async chatStream(c, params) {
-		const { action, content, subject, prompt } = params;
+		const { action, content, subject, prompt, metadata } = params;
 
 		if (!action || !['translate', 'summarize', 'reply', 'polish', 'generate'].includes(action)) {
 			throw new BizError(t('invalidAiAction'), 400);
@@ -119,8 +119,18 @@ const aiService = {
 			userContent = prompt || '';
 		} else {
 			if (subject) {
-				userContent += `Subject: ${subject}\n\n`;
+				userContent += `Subject: ${subject}\n`;
 			}
+			if (metadata?.from) {
+				userContent += `From: ${metadata.from}\n`;
+			}
+			if (metadata?.to) {
+				userContent += `To: ${metadata.to}\n`;
+			}
+			if (metadata?.date) {
+				userContent += `Date: ${metadata.date}\n`;
+			}
+			if (userContent) userContent += '\n';
 			userContent += content || '';
 		}
 

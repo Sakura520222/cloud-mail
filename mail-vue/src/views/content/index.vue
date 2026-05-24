@@ -86,6 +86,7 @@
       :action="aiAction"
       :content="aiContent"
       :subject="email.subject"
+      :metadata="aiMetadata"
       :show-insert="aiAction === 'reply'"
       @insert="handleAiInsert"
     />
@@ -124,6 +125,7 @@ const srcList = reactive([])
 const aiDialogVisible = ref(false)
 const aiAction = ref('')
 const aiContent = ref('')
+const aiMetadata = ref({})
 
 const { t } = useI18n()
 watch(() => accountStore.currentAccountId, () => {
@@ -162,6 +164,11 @@ function handleAiAction(command) {
   aiContent.value = email.content
     ? email.content.replace(/{{domain}}/g, toOssDomain(domain) + '/')
     : email.text || ''
+  aiMetadata.value = {
+    from: `${email.name} <${email.sendEmail}>`,
+    to: formateReceive(email.recipient),
+    date: email.createTime
+  }
   aiDialogVisible.value = true
 }
 

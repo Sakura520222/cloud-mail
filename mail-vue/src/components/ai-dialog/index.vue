@@ -26,6 +26,7 @@
         </div>
         <div class="ai-footer-right">
           <el-button v-if="result && showInsert" type="primary" @click="handleInsert">{{ $t('aiInsertEditor') }}</el-button>
+          <el-button v-if="props.action === 'generate' && !loading && !result" type="primary" @click="startChat">{{ $t('aiGenerate') }}</el-button>
           <el-button @click="handleClose">{{ $t('cancel') }}</el-button>
         </div>
       </div>
@@ -45,6 +46,7 @@ const props = defineProps({
   action: { type: String, default: '' },
   content: { type: String, default: '' },
   subject: { type: String, default: '' },
+  metadata: { type: Object, default: () => ({}) },
   showInsert: { type: Boolean, default: false },
   promptVisible: { type: Boolean, default: false }
 })
@@ -112,7 +114,8 @@ function startChat() {
     action: props.action,
     content: props.content,
     subject: props.subject,
-    language: t('aiLanguage')
+    language: t('aiLanguage'),
+    metadata: props.metadata
   }
 
   if (props.action === 'generate') {
