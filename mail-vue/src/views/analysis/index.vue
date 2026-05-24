@@ -253,7 +253,7 @@
 <script setup>
 import { Icon } from "@iconify/vue";
 import { useTransition } from "@vueuse/core";
-import { defineOptions, onActivated, onDeactivated, onMounted, reactive, ref, watch, computed } from "vue";
+import {defineOptions, onActivated, onDeactivated, onMounted, nextTick, reactive, ref, watch, computed} from "vue";
 import echarts from "@/echarts/index.js";
 import dayjs from "dayjs";
 import { analysisEcharts } from "@/request/analysis.js";
@@ -387,11 +387,20 @@ onActivated(() => {
 onDeactivated(() => { leaveWidth = window.innerWidth; });
 window.onresize = () => widthChange();
 watch(() => uiStore.dark, () => { if (route.name !== 'analysis') return; pageDark = uiStore.dark; rebuildAll(); });
-watch(activeTab, (tab) => { boxKey.value++; setTimeout(() => { if (tab === 'overview') initOverviewCharts(); else initReportCharts(); }); });
+watch(activeTab, (tab) => { boxKey.value++; nextTick(() => { if (tab === 'overview') initOverviewCharts(); else initReportCharts(); }); });
 
-function rebuildAll() { if (route.name !== 'analysis') return; boxKey.value++; setTimeout(() => { initOverviewCharts(); initReportCharts(); }); }
-function initOverviewCharts() { if (!hasAnalysisPerm) return; setTimeout(() => { createSenderPie(); createIncreaseLine(); createEmailColumnChart(); createSendGauge(); }); }
-function initReportCharts() { setTimeout(() => { createTrendChart(); createContactsChart(); createHourlyChart(); createStatusPie(); }); }
+function rebuildAll() {
+    if (route.name !== 'analysis') return;
+    boxKey.value++;
+    nextTick(() => { if (activeTab.value === 'overview') initOverviewCharts(); else initReportCharts(); });
+}
+function initOverviewCharts() {
+    if (!hasAnalysisPerm) return;
+    nextTick(() => { createSenderPie(); createIncreaseLine(); createEmailColumnChart(); createSendGauge(); });
+}
+function initReportCharts() {
+    nextTick(() => { createTrendChart(); createContactsChart(); createHourlyChart(); createStatusPie(); });
+}
 
 let senderPieLeft = window.innerWidth < 500 ? `${window.innerWidth - 110}` : '72%';
 const measureCtx = document.createElement('canvas').getContext('2d'); measureCtx.font = '12px sans-serif';
