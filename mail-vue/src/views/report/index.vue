@@ -26,10 +26,12 @@
           />
         </div>
         <div class="controls-right">
-          <el-button @click="onRefresh" :loading="refreshing" :icon="RefreshIcon">
+          <el-button @click="onRefresh" :loading="refreshing">
+            <Icon icon="ep:refresh" width="14" height="14" style="margin-right: 4px;"/>
             {{ $t('refreshReport') }}
           </el-button>
-          <el-button type="primary" @click="onAiAnalysis" :loading="aiGenerating" :icon="SparklesIcon">
+          <el-button type="primary" @click="onAiAnalysis" :loading="aiGenerating">
+            <Icon icon="ep:magic-stick" width="14" height="14" style="margin-right: 4px;"/>
             {{ $t('aiAnalysis') }}
           </el-button>
         </div>
@@ -134,7 +136,7 @@
         </div>
         <div class="ai-report-content" ref="aiReportContent">
           <div v-if="aiGenerating" class="ai-loading">
-            <el-icon class="is-loading"><Loading/></el-icon>
+            <Icon icon="ep:loading" width="18" height="18" class="spin-icon"/>
             <span>{{ $t('generatingAnalysis') }}</span>
           </div>
           <div v-else class="ai-text" v-html="renderMarkdown(aiResult)"></div>
@@ -168,14 +170,10 @@ import loading from "@/components/loading/index.vue";
 import {useRoute} from "vue-router";
 import {useI18n} from 'vue-i18n';
 import {hasPerm} from "@/perm/perm.js";
-import {Refresh as RefreshIcon} from '@element-plus/icons-vue';
-import {Loading} from '@element-plus/icons-vue';
 
 defineOptions({
   name: 'report'
 })
-
-const SparklesIcon = computed(() => () => import('@element-plus/icons-vue').then(m => m.MagicStick));
 
 const {t} = useI18n();
 const route = useRoute();
@@ -801,5 +799,13 @@ function createStatusPie() {
     border: 1px solid var(--el-border-color);
     padding-bottom: 16px;
   }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin-icon {
+  animation: spin 1s linear infinite;
 }
 </style>
