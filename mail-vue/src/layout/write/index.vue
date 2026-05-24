@@ -52,17 +52,17 @@
           <div class="att-clear" @click="clearContent">
             <Icon icon="icon-park-outline:clear-format" width="24" height="24 "/>
           </div>
-          <el-dropdown v-perm="'ai:use'" trigger="click" @command="handleWriteAiAction">
-            <div class="att-add">
-              <Icon icon="fluent:brain-sparkle-24-regular" width="24" height="24"/>
-            </div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="polish">{{ $t('aiPolish') }}</el-dropdown-item>
-                <el-dropdown-item command="generate">{{ $t('aiGenerate') }}</el-dropdown-item>
-              </el-dropdown-menu>
+          <el-popover v-perm="'ai:use'" placement="bottom" trigger="click" :width="120" v-model:visible="writeAiPopoverVisible">
+            <template #reference>
+              <div class="att-add">
+                <Icon icon="fluent:brain-sparkle-24-regular" width="24" height="24"/>
+              </div>
             </template>
-          </el-dropdown>
+            <div class="ai-action-list">
+              <div class="ai-action-item" @click="triggerWriteAiAction('polish')">{{ $t('aiPolish') }}</div>
+              <div class="ai-action-item" @click="triggerWriteAiAction('generate')">{{ $t('aiGenerate') }}</div>
+            </div>
+          </el-popover>
           <div class="att-list">
             <div class="att-item" v-for="(item,index) in form.attachments" :key="index">
               <Icon v-bind="getIconByName(item.filename)"/>
@@ -285,6 +285,13 @@ function clearContent() {
     resetForm()
   })
 
+}
+
+const writeAiPopoverVisible = ref(false)
+
+function triggerWriteAiAction(action) {
+  writeAiPopoverVisible.value = false
+  handleWriteAiAction(action)
 }
 
 function handleWriteAiAction(command) {
@@ -843,5 +850,22 @@ function close() {
 
 .icon {
   cursor: pointer;
+}
+
+.ai-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-action-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: background 0.2s;
+  &:hover {
+    background: var(--el-fill-color-light);
+  }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="visible" :title="dialogTitle" width="600" :before-close="handleClose" class="ai-dialog" @opened="onOpened">
+  <el-dialog v-model="visible" :title="dialogTitle" width="600px" :before-close="handleClose" class="ai-dialog" @opened="onOpened">
     <div class="ai-content">
       <div class="ai-result" ref="resultRef">
         <div v-if="loading && !result" class="ai-loading">

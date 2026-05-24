@@ -9,18 +9,16 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
-      <el-dropdown v-perm="'ai:use'" trigger="click" @command="handleAiAction">
-        <div class="ai-trigger" @click.stop>
+      <el-popover v-perm="'ai:use'" placement="bottom" trigger="click" :width="120" v-model:visible="aiPopoverVisible">
+        <template #reference>
           <Icon class="icon" icon="fluent:brain-sparkle-24-regular" width="20" height="20" />
-        </div>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="translate">{{ $t('aiTranslate') }}</el-dropdown-item>
-            <el-dropdown-item command="summarize">{{ $t('aiSummarize') }}</el-dropdown-item>
-            <el-dropdown-item command="reply">{{ $t('aiReply') }}</el-dropdown-item>
-          </el-dropdown-menu>
         </template>
-      </el-dropdown>
+        <div class="ai-action-list">
+          <div class="ai-action-item" @click="triggerAiAction('translate')">{{ $t('aiTranslate') }}</div>
+          <div class="ai-action-item" @click="triggerAiAction('summarize')">{{ $t('aiSummarize') }}</div>
+          <div class="ai-action-item" @click="triggerAiAction('reply')">{{ $t('aiReply') }}</div>
+        </div>
+      </el-popover>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
@@ -148,6 +146,13 @@ function openReply() {
 
 function openForward() {
   uiStore.writerRef.openForward(email)
+}
+
+const aiPopoverVisible = ref(false)
+
+function triggerAiAction(action) {
+  aiPopoverVisible.value = false
+  handleAiAction(action)
 }
 
 function handleAiAction(command) {
@@ -467,6 +472,23 @@ const handleDelete = () => {
 
 .bottom-distance {
   margin-bottom: 30px;
+}
+
+.ai-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-action-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: background 0.2s;
+  &:hover {
+    background: var(--el-fill-color-light);
+  }
 }
 
 
