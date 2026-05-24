@@ -69,6 +69,7 @@ const zh = {
 	aiNotConfigured: 'AI 服务未配置，请在系统设置中配置 AI API 或启用 Workers AI',
 	invalidAiAction: '无效的 AI 操作类型',
 	emptyAiContent: 'AI 操作内容不能为空',
+	aiApiUrl404: 'AI API 地址无法访问(404)，请检查系统设置中的 API URL 是否正确，需包含完整路径如 /v1/chat/completions',
 	perms: {
 		"邮件": "邮件",
 		"邮件发送": "邮件发送",

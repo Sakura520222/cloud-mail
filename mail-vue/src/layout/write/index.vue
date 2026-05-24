@@ -141,7 +141,8 @@ defineExpose({
   openReply,
   openForward,
   openDraft,
-  editor
+  editor,
+  setContentAfterInit
 })
 
 const {t} = useI18n()
@@ -298,6 +299,25 @@ function handleWriteAiAction(command) {
 
 function handleAiInsertToEditor(content) {
   editor.value.setContent(content)
+}
+
+function setContentAfterInit(content) {
+  const checkReady = () => {
+    const ed = editor.value
+    if (ed && ed.getContent && typeof ed.getContent === 'function') {
+      ed.setContent(content)
+      return true
+    }
+    return false
+  }
+  if (!checkReady()) {
+    let attempts = 0
+    const interval = setInterval(() => {
+      if (checkReady() || ++attempts > 20) {
+        clearInterval(interval)
+      }
+    }, 100)
+  }
 }
 
 function delAtt(index) {

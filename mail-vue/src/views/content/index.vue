@@ -10,7 +10,9 @@
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
       <el-dropdown v-perm="'ai:use'" trigger="click" @command="handleAiAction">
-        <Icon class="icon" icon="fluent:brain-sparkle-24-regular" width="20" height="20" />
+        <div class="ai-trigger" @click.stop>
+          <Icon class="icon" icon="fluent:brain-sparkle-24-regular" width="20" height="20" />
+        </div>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item command="translate">{{ $t('aiTranslate') }}</el-dropdown-item>
@@ -157,16 +159,14 @@ function handleAiAction(command) {
   aiDialogVisible.value = true
 }
 
-function handleAiInsert(content) {
+function handleAiInsert(aiContent) {
   if (aiAction.value === 'reply') {
     openReply()
     nextTick(() => {
-      setTimeout(() => {
-        const writerEl = uiStore.writerRef
-        if (writerEl?.editor?.setContent) {
-          writerEl.editor.setContent(content)
-        }
-      }, 200)
+      const writerEl = uiStore.writerRef
+      if (writerEl?.setContentAfterInit) {
+        writerEl.setContentAfterInit(aiContent)
+      }
     })
   }
 }

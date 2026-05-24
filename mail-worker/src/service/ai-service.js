@@ -190,7 +190,10 @@ const aiService = {
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			throw new Error(`AI API error: ${response.status} ${errorText}`);
+			if (response.status === 404) {
+				throw new Error(t('aiApiUrl404'));
+			}
+			throw new Error(`AI API error: ${response.status} ${errorText.slice(0, 200)}`);
 		}
 
 		const reader = response.body.getReader();

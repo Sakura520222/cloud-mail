@@ -69,6 +69,7 @@ const en = {
 	aiNotConfigured: 'AI service not configured. Please configure AI API in System Settings or enable Workers AI',
 	invalidAiAction: 'Invalid AI action type',
 	emptyAiContent: 'AI operation content cannot be empty',
+	aiApiUrl404: 'AI API URL not found (404). Please check the API URL in System Settings. It should include the full path, e.g. /v1/chat/completions',
 	perms: {
 		"邮件": "Emails",
 		"邮件发送": "Send Email",
