@@ -3,7 +3,7 @@
     <div class="ai-content">
       <div class="ai-result" ref="resultRef">
         <div v-if="loading && !result" class="ai-loading">
-          <el-icon class="loading-icon"><Loading /></el-icon>
+          <Icon class="loading-icon" icon="svg-spinners:ring-resize" width="18" height="18" />
           <span>{{ $t('aiGenerating') }}</span>
         </div>
         <div v-else-if="result" class="ai-text" v-html="formattedResult"></div>
@@ -21,11 +21,11 @@
     <template #footer>
       <div class="ai-footer">
         <div class="ai-footer-left">
-          <el-button v-if="result" @click="copyResult" :icon="DocumentCopy">{{ $t('aiCopy') }}</el-button>
-          <el-button v-if="result" @click="regenerate" :icon="RefreshRight">{{ $t('aiRegenerate') }}</el-button>
+          <el-button v-if="result" @click="copyResult">{{ $t('aiCopy') }}</el-button>
+          <el-button v-if="result" @click="regenerate">{{ $t('aiRegenerate') }}</el-button>
         </div>
         <div class="ai-footer-right">
-          <el-button v-if="result && showInsert" type="primary" @click="handleInsert" :icon="Position">{{ $t('aiInsertEditor') }}</el-button>
+          <el-button v-if="result && showInsert" type="primary" @click="handleInsert">{{ $t('aiInsertEditor') }}</el-button>
           <el-button @click="handleClose">{{ $t('cancel') }}</el-button>
         </div>
       </div>
@@ -36,7 +36,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Loading, DocumentCopy, RefreshRight, Position } from '@element-plus/icons-vue'
+import { Icon } from '@iconify/vue'
 import { aiChat } from '@/request/ai.js'
 import { useI18n } from 'vue-i18n'
 
@@ -193,7 +193,6 @@ defineExpose({ startChat, regenerate })
 
   .loading-icon {
     animation: rotating 1.5s linear infinite;
-    font-size: 18px;
   }
 }
 
