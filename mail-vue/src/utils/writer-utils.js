@@ -1,15 +1,5 @@
-let writerRef = null
-
-export function setWriterRef(ref) {
-  writerRef = ref
-}
-
-export function getWriterRef(uiStore) {
-  return writerRef?.value || null
-}
-
 export function callWriter(uiStore, method, ...args) {
-  const writer = getWriterRef(uiStore)
+  const writer = uiStore?.writerRef
   const action = writer?.[method]
 
   if (typeof action !== 'function') {
