@@ -49,11 +49,13 @@ const accountService = {
 
 		let accountRow = await this.selectByEmailIncludeDel(c, email);
 
+		let isReactivated = false;
+
 		if (accountRow && accountRow.isDel === isDel.DELETE) {
-			throw new BizError(t('isDelAccount'));
+			isReactivated = true;
 		}
 
-		if (accountRow) {
+		if (accountRow && !isReactivated) {
 			throw new BizError(t('isRegAccount'));
 		}
 
@@ -88,7 +90,12 @@ const accountService = {
 		}
 
 
-		accountRow = await orm(c).insert(account).values({ email: email, userId: userId, name: emailUtils.getName(email) }).returning().get();
+		if (isReactivated) {
+			await this.reactivateForUser(c, email, userId);
+			accountRow = await this.selectByEmailIncludeDel(c, email);
+		} else {
+			accountRow = await orm(c).insert(account).values({ email: email, userId: userId, name: emailUtils.getName(email) }).returning().get();
+		}
 
 		if (addEmailVerify === settingConst.addEmailVerify.COUNT && !addVerifyOpen) {
 			const row = await verifyRecordService.increaseAddCount(c);
@@ -207,6 +214,10 @@ const accountService = {
 
 	async restoreByUserId(c, userId) {
 		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.userId, userId)).run();
+	},
+
+	async reactivateForUser(c, email, userId) {
+		await orm(c).update(account).set({ isDel: isDel.NORMAL, userId }).where(eq(account.email, email)).run();
 	},
 
 	async setName(c, params, userId) {

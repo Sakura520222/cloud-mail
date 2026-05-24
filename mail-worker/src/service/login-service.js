@@ -82,11 +82,13 @@ const loginService = {
 
 		const accountRow = await accountService.selectByEmailIncludeDel(c, email);
 
+		let isReactivated = false;
+
 		if (accountRow && accountRow.isDel === isDel.DELETE) {
-			throw new BizError(t('isDelUser'));
+			isReactivated = true;
 		}
 
-		if (accountRow) {
+		if (accountRow && !isReactivated) {
 			throw new BizError(t('isRegAccount'));
 		}
 
@@ -128,9 +130,18 @@ const loginService = {
 
 		const { salt, hash } = await saltHashUtils.hashPassword(password);
 
-		const userId = await userService.insert(c, { email, regKeyId,password: hash, salt, type: type || defType });
+		let userId;
 
-		await accountService.insert(c, { userId: userId, email, name: emailUtils.getName(email) });
+		if (isReactivated) {
+			userId = await userService.reactivateByEmail(c, email, hash, salt, type || defType);
+			if (!userId) {
+				userId = await userService.insert(c, { email, regKeyId, password: hash, salt, type: type || defType });
+			}
+			await accountService.restoreByEmail(c, email);
+		} else {
+			userId = await userService.insert(c, { email, regKeyId, password: hash, salt, type: type || defType });
+			await accountService.insert(c, { userId: userId, email, name: emailUtils.getName(email) });
+		}
 
 		await userService.updateUserInfo(c, userId, true);
 

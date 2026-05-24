@@ -316,11 +316,13 @@ const userService = {
 
 		const accountRow = await accountService.selectByEmailIncludeDel(c, email);
 
+		let isReactivated = false;
+
 		if (accountRow && accountRow.isDel === isDel.DELETE) {
-			throw new BizError(t('isDelUser'));
+			isReactivated = true;
 		}
 
-		if (accountRow) {
+		if (accountRow && !isReactivated) {
 			throw new BizError(t('isRegAccount'));
 		}
 
@@ -332,11 +334,22 @@ const userService = {
 
 		const { salt, hash } = await saltHashUtils.hashPassword(password);
 
-		const userId = await userService.insert(c, { email, password: hash, salt, type });
+		let userId;
+
+		if (isReactivated) {
+			userId = await this.reactivateByEmail(c, email, hash, salt, type);
+			if (!userId) {
+				userId = await userService.insert(c, { email, password: hash, salt, type });
+				await accountService.insert(c, { userId: userId, email, type, name: emailUtils.getName(email) });
+			} else {
+				await accountService.restoreByEmail(c, email);
+			}
+		} else {
+			userId = await userService.insert(c, { email, password: hash, salt, type });
+			await accountService.insert(c, { userId: userId, email, type, name: emailUtils.getName(email) });
+		}
 
 		await userService.updateUserInfo(c, userId, true);
-
-		await accountService.insert(c, { userId: userId, email, type, name: emailUtils.getName(email) });
 	},
 
 	async resetDaySendCount(c) {
@@ -364,6 +377,13 @@ const userService = {
 			await accountService.restoreByUserId(c, userId);
 		}
 
+	},
+
+	async reactivateByEmail(c, email, password, salt, type) {
+		const userRow = await this.selectByEmailIncludeDel(c, email);
+		if (!userRow) return null;
+		await orm(c).update(user).set({ isDel: isDel.NORMAL, password, salt, type }).where(eq(user.userId, userRow.userId)).run();
+		return userRow.userId;
 	},
 
 	listByRegKeyId(c, regKeyId) {
