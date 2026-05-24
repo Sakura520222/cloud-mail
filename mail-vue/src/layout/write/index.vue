@@ -136,15 +136,6 @@ import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
 
-defineExpose({
-  open,
-  openReply,
-  openForward,
-  openDraft,
-  editor,
-  setContentAfterInit
-})
-
 const {t} = useI18n()
 const writerStore = useWriterStore();
 const draftStore = userDraftStore()
@@ -186,6 +177,15 @@ const form = reactive({
 })
 
 const selectRecipientList = ref([])
+
+defineExpose({
+  open,
+  openReply,
+  openForward,
+  openDraft,
+  editor,
+  setContentAfterInit
+})
 
 function getEditor() {
   return editor.value || null
