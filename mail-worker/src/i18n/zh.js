@@ -105,11 +105,11 @@ const zh = {
 		"设置修改": "设置修改",
 		'发件重置': '发件重置',
 		'AI 助手': 'AI 助手',
-	'AI 使用': 'AI 使用',
-	'AI 分类': 'AI 分类',
-	'AI 自动分类': 'AI 自动分类',
-	'AI 标签': 'AI 标签',
-	'AI 自动标签': 'AI 自动标签'
+		'AI 使用': 'AI 使用',
+		'AI 分类': 'AI 分类',
+		'AI 自动分类': 'AI 自动分类',
+		'AI 标签': 'AI 标签',
+		'AI 自动标签': 'AI 自动标签'
 	},
 	folderNameRequired: '文件夹名称不能为空',
 	folderNameExists: '文件夹名称已存在',
@@ -117,6 +117,7 @@ const zh = {
 	tagNameRequired: '标签名称不能为空',
 	tagNameExists: '标签名称已存在',
 	tagNotExist: '标签不存在',
-	emailNotExist: '邮件不存在',
+	emailNotExist: '邮件不存在'
+};
 
-export default zh
+export default zh;
