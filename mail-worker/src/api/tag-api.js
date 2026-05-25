@@ -14,7 +14,7 @@ app.put('/tag/update', async (c) => {
 });
 
 app.delete('/tag/delete', async (c) => {
-	await tagService.delete(c, await c.req.json(), userContext.getUserId(c));
+	await tagService.delete(c, c.req.query(), userContext.getUserId(c));
 	return c.json(result.ok());
 });
 

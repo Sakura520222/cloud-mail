@@ -61,6 +61,11 @@ watch(() => accountStore.currentAccountId, () => {
   scroll.value.refreshList();
 })
 
+watch(() => [route.name, route.params.folderId, route.params.tagId], () => {
+  existIds.clear()
+  scroll.value.refreshList();
+})
+
 function changeTimeSort() {
   params.timeSort = params.timeSort ? 0 : 1
   scroll.value.refreshList();

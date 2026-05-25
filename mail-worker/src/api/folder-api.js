@@ -14,7 +14,7 @@ app.put('/folder/update', async (c) => {
 });
 
 app.delete('/folder/delete', async (c) => {
-	await folderService.delete(c, await c.req.json(), userContext.getUserId(c));
+	await folderService.delete(c, c.req.query(), userContext.getUserId(c));
 	return c.json(result.ok());
 });
 
