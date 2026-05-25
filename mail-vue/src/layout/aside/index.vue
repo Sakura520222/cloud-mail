@@ -126,7 +126,7 @@ async function openAddFolder() {
   try {
     const {value} = await ElMessageBox.prompt(t('folderNamePlaceholder'), t('createFolder'), {
       confirmButtonText: t('createFolder'),
-      cancelButtonText: 'Cancel',
+      cancelButtonText: t('cancel'),
       inputPattern: /\S+/,
       inputErrorMessage: t('folderNamePlaceholder')
     });
@@ -140,7 +140,7 @@ async function handleDeleteFolder(f) {
   try {
     await ElMessageBox.confirm(
       t('confirmDeleteFolder', {name: f.name}),
-      {confirmButtonText: 'OK', cancelButtonText: 'Cancel', type: 'warning'}
+      {confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), type: 'warning'}
     );
     await folderDelete(f.folderId);
     await folderStore.refreshFolders();
@@ -152,7 +152,7 @@ async function openAddTag() {
   try {
     const {value} = await ElMessageBox.prompt(t('tagNamePlaceholder'), t('createTag'), {
       confirmButtonText: t('createTag'),
-      cancelButtonText: 'Cancel',
+      cancelButtonText: t('cancel'),
       inputPattern: /\S+/,
       inputErrorMessage: t('tagNamePlaceholder')
     });
@@ -166,7 +166,7 @@ async function handleDeleteTag(tg) {
   try {
     await ElMessageBox.confirm(
       t('confirmDeleteTag', {name: tg.name}),
-      {confirmButtonText: 'OK', cancelButtonText: 'Cancel', type: 'warning'}
+      {confirmButtonText: t('confirm'), cancelButtonText: t('cancel'), type: 'warning'}
     );
     await tagDelete(tg.tagId);
     await tagStore.refreshTags();
