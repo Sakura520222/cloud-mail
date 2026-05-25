@@ -298,7 +298,11 @@
     </el-dialog>
 
     <!-- Batch tag dialog -->
-    <el-dialog v-model="showBatchTagDialog" :title="t('batchAddTag')" width="360px" append-to-body>
+    <el-dialog v-model="showBatchTagDialog" :title="batchTagMode === 'add' ? t('batchAddTag') : t('batchRemoveTag')" width="360px" append-to-body>
+      <div class="batch-mode-switch">
+        <span :class="{active: batchTagMode === 'add'}" @click="batchTagMode = 'add'">{{t('addTag')}}</span>
+        <span :class="{active: batchTagMode === 'remove'}" @click="batchTagMode = 'remove'">{{t('removeTag')}}</span>
+      </div>
       <div class="rc-dialog-list rc-tag-list">
         <el-check-tag v-for="tg in batchTagList" :key="tg.tagId"
                       :checked="false"
@@ -721,26 +725,43 @@ async function handleBatchMoveFolder(f) {
       }
     })
     showBatchFolderDialog.value = false
-    ElMessage.success(t('folderUpdated'))
+    ElMessage.success(t('batchMoveSuccess'))
   } catch (e) { console.error(e) }
 }
+
+const batchTagMode = ref('add')
 
 async function handleBatchToggleTag(tg) {
   const ids = getSelectedMailsIds()
   if (ids.length === 0) return
   try {
-    for (const emailId of ids) {
-      const item = emailList.find(e => e.emailId === emailId)
-      if (!item) continue
-      let tagList = item.tagList || []
-      let tagIds = tagList.map(t => t.tagId)
-      if (!tagIds.includes(tg.tagId)) {
-        tagIds.push(tg.tagId)
-        item.tagList = [...tagList, {tagId: tg.tagId, tagName: tg.name, tagColor: tg.color}]
-        await emailSetTags(emailId, tagIds)
+    if (batchTagMode.value === 'remove') {
+      for (const emailId of ids) {
+        const item = emailList.find(e => e.emailId === emailId)
+        if (!item) continue
+        let tagList = item.tagList || []
+        let tagIds = tagList.map(t => t.tagId)
+        if (tagIds.includes(tg.tagId)) {
+          tagIds = tagIds.filter(id => id !== tg.tagId)
+          item.tagList = tagList.filter(t => t.tagId !== tg.tagId)
+          await emailSetTags(emailId, tagIds)
+        }
       }
+      ElMessage.success(t('batchRemoveTagSuccess'))
+    } else {
+      for (const emailId of ids) {
+        const item = emailList.find(e => e.emailId === emailId)
+        if (!item) continue
+        let tagList = item.tagList || []
+        let tagIds = tagList.map(t => t.tagId)
+        if (!tagIds.includes(tg.tagId)) {
+          tagIds.push(tg.tagId)
+          item.tagList = [...tagList, {tagId: tg.tagId, tagName: tg.name, tagColor: tg.color}]
+          await emailSetTags(emailId, tagIds)
+        }
+      }
+      ElMessage.success(t('batchTagSuccess'))
     }
-    ElMessage.success(t('aiTagSuccess'))
     showBatchTagDialog.value = false
   } catch (e) { console.error(e) }
 }
@@ -1641,6 +1662,32 @@ ul {
   border-top: 1px solid var(--el-border-color-lighter);
   display: flex;
   justify-content: center;
+}
+
+.batch-mode-switch {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--el-border-color);
+  span {
+    flex: 1;
+    text-align: center;
+    padding: 6px 0;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    background: var(--el-fill-color-blank);
+    color: var(--el-text-color-regular);
+    &:hover {
+      background: var(--el-fill-color-light);
+    }
+    &.active {
+      background: var(--el-color-primary);
+      color: #fff;
+    }
+  }
 }
 
 .rc-tag-list {
