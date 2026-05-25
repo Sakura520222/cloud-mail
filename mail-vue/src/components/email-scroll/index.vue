@@ -18,6 +18,12 @@
         <Icon v-perm="'email:delete'" class="icon delete" icon="fluent:mail-read-20-regular" width="21" height="21"
               v-if="getSelectedMailsIds().length > 0 && showUnread"
               @click="handleRead"/>
+        <Icon class="icon" icon="mdi:folder-outline" width="18" height="18"
+              v-if="getSelectedMailsIds().length > 0"
+              @click="openBatchFolderMenu" :title="t('batchMoveFolder')"/>
+        <Icon class="icon" icon="mdi:tag-outline" width="18" height="18"
+              v-if="getSelectedMailsIds().length > 0"
+              @click="openBatchTagMenu" :title="t('batchAddTag')"/>
       </div>
 
       <div class="header-right">
@@ -276,6 +282,36 @@
         <el-button size="small" @click="handleRightCreateTag"><Icon icon="mdi:plus" width="14" height="14" /> {{t('createTag')}}</el-button>
       </div>
     </el-dialog>
+
+    <!-- Batch folder dialog -->
+    <el-dialog v-model="showBatchFolderDialog" :title="t('batchMoveFolder')" width="360px" append-to-body>
+      <div class="rc-dialog-list">
+        <div class="rc-dialog-item" v-for="f in batchFolderList" :key="f.folderId" @click="handleBatchMoveFolder(f)">
+          <Icon :icon="f.icon || 'mdi:folder-outline'" width="18" height="18" />
+          <span>{{f.name}}</span>
+        </div>
+        <div v-if="batchFolderList.length === 0" class="rc-dialog-empty">{{t('noFolder')}}</div>
+      </div>
+      <div class="rc-dialog-footer">
+        <el-button size="small" @click="handleBatchCreateFolder"><Icon icon="mdi:plus" width="14" height="14" /> {{t('createFolder')}}</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- Batch tag dialog -->
+    <el-dialog v-model="showBatchTagDialog" :title="t('batchAddTag')" width="360px" append-to-body>
+      <div class="rc-dialog-list rc-tag-list">
+        <el-check-tag v-for="tg in batchTagList" :key="tg.tagId"
+                      :checked="false"
+                      @change="handleBatchToggleTag(tg)">
+          <span class="tag-dot" :style="{background: tg.color}"></span>
+          {{tg.name}}
+        </el-check-tag>
+        <div v-if="batchTagList.length === 0" class="rc-dialog-empty">{{t('noFolder')}}</div>
+      </div>
+      <div class="rc-dialog-footer">
+        <el-button size="small" @click="handleBatchCreateTag"><Icon icon="mdi:plus" width="14" height="14" /> {{t('createTag')}}</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -384,6 +420,10 @@ const showRightFolderDialog = ref(false);
 const showRightTagDialog = ref(false);
 const rightFolderList = ref([]);
 const rightTagList = ref([]);
+const showBatchFolderDialog = ref(false);
+const showBatchTagDialog = ref(false);
+const batchFolderList = ref([]);
+const batchTagList = ref([]);
 let timer = null
 const position = ref(
     DOMRect.fromRect({
@@ -654,6 +694,83 @@ async function handleRightCreateTag() {
     await fetchTagAdd(value.trim(), '#409EFF')
     await tagStore.refreshTags()
     rightTagList.value = await fetchTagList()
+    ElMessage.success(t('tagCreated'))
+  } catch {}
+}
+
+// ---- Batch folder/tag operations ----
+async function openBatchFolderMenu() {
+  batchFolderList.value = await fetchFolderList()
+  showBatchFolderDialog.value = true
+}
+
+async function openBatchTagMenu() {
+  batchTagList.value = await fetchTagList()
+  showBatchTagDialog.value = true
+}
+
+async function handleBatchMoveFolder(f) {
+  const ids = getSelectedMailsIds()
+  if (ids.length === 0) return
+  try {
+    await emailMoveFolder(ids.join(','), f.folderId)
+    emailList.forEach(item => {
+      if (item.checked) {
+        item.folderId = f.folderId
+        item.folderName = f.name
+      }
+    })
+    showBatchFolderDialog.value = false
+    ElMessage.success(t('folderUpdated'))
+  } catch (e) { console.error(e) }
+}
+
+async function handleBatchToggleTag(tg) {
+  const ids = getSelectedMailsIds()
+  if (ids.length === 0) return
+  try {
+    for (const emailId of ids) {
+      const item = emailList.find(e => e.emailId === emailId)
+      if (!item) continue
+      let tagList = item.tagList || []
+      let tagIds = tagList.map(t => t.tagId)
+      if (!tagIds.includes(tg.tagId)) {
+        tagIds.push(tg.tagId)
+        item.tagList = [...tagList, {tagId: tg.tagId, tagName: tg.name, tagColor: tg.color}]
+        await emailSetTags(emailId, tagIds)
+      }
+    }
+    ElMessage.success(t('aiTagSuccess'))
+    showBatchTagDialog.value = false
+  } catch (e) { console.error(e) }
+}
+
+async function handleBatchCreateFolder() {
+  try {
+    const {value} = await ElMessageBox.prompt(t('folderNamePlaceholder'), t('createFolder'), {
+      confirmButtonText: t('createFolder'),
+      cancelButtonText: t('cancel'),
+      inputPattern: /\S+/,
+      inputErrorMessage: t('folderNamePlaceholder')
+    })
+    await fetchFolderAdd(value.trim(), '')
+    await folderStore.refreshFolders()
+    batchFolderList.value = await fetchFolderList()
+    ElMessage.success(t('folderCreated'))
+  } catch {}
+}
+
+async function handleBatchCreateTag() {
+  try {
+    const {value} = await ElMessageBox.prompt(t('tagNamePlaceholder'), t('createTag'), {
+      confirmButtonText: t('createTag'),
+      cancelButtonText: t('cancel'),
+      inputPattern: /\S+/,
+      inputErrorMessage: t('tagNamePlaceholder')
+    })
+    await fetchTagAdd(value.trim(), '#409EFF')
+    await tagStore.refreshTags()
+    batchTagList.value = await fetchTagList()
     ElMessage.success(t('tagCreated'))
   } catch {}
 }
