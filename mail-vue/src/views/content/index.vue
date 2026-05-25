@@ -41,15 +41,29 @@
               <div class="date">
                 <div>{{ formatDetailDate(email.createTime) }}</div>
               </div>
-              <!-- Folder & Tags display -->
-              <div class="email-folder-tags" v-if="email.folderName || (email.tagList && email.tagList.length > 0)">
-                <span class="folder-badge" v-if="email.folderName" @click="showFolderDialog = true">
-                  <Icon icon="mdi:folder-outline" width="14" height="14" />
-                  {{email.folderName}}
+              <!-- Folder & Tags display with manual actions -->
+              <div class="email-folder-tags">
+                <template v-if="email.folderName">
+                  <span class="folder-badge" @click="showFolderDialog = true">
+                    <Icon icon="mdi:folder-outline" width="14" height="14" />
+                    {{email.folderName}}
+                  </span>
+                  <Icon class="tag-remove-icon" icon="mdi:close-circle" width="14" height="14"
+                        @click="handleRemoveFolder" :title="$t('removeFolder')" />
+                </template>
+                <span class="folder-badge folder-badge-add" v-else @click="showFolderDialog = true">
+                  <Icon icon="mdi:folder-plus-outline" width="14" height="14" />
+                  {{$t('moveToFolder')}}
                 </span>
                 <span class="tag-badge" v-for="tg in (email.tagList || [])" :key="tg.tagId"
                       :style="{borderColor: tg.tagColor, color: tg.tagColor}">
                   {{tg.tagName}}
+                  <Icon class="tag-remove-icon" icon="mdi:close-circle" width="12" height="12"
+                        @click.stop="handleRemoveTag(tg)" />
+                </span>
+                <span class="tag-badge tag-badge-add" @click="showTagDialog = true">
+                  <Icon icon="mdi:tag-plus-outline" width="14" height="14" />
+                  {{$t('addTag')}}
                 </span>
               </div>
             </div>
@@ -103,6 +117,33 @@
       :show-insert="aiAction === 'reply'"
       @insert="handleAiInsert"
     />
+
+    <!-- Manual folder select dialog -->
+    <el-dialog v-model="showFolderDialog" :title="$t('selectFolder')" width="360px" append-to-body>
+      <div class="folder-select-list">
+        <div class="folder-select-item" v-for="f in folderList" :key="f.folderId"
+             :class="{active: email.folderId === f.folderId}" @click="handleMoveToFolder(f)">
+          <Icon :icon="f.icon || 'mdi:folder-outline'" width="18" height="18" />
+          <span>{{f.name}}</span>
+          <Icon v-if="email.folderId === f.folderId" icon="mdi:check" width="16" height="16" style="margin-left:auto;color:var(--el-color-primary)" />
+        </div>
+        <div v-if="folderList.length === 0" class="empty-hint">{{$t('noFolder')}}</div>
+      </div>
+    </el-dialog>
+
+    <!-- Manual tag select dialog -->
+    <el-dialog v-model="showTagDialog" :title="$t('selectTags')" width="360px" append-to-body>
+      <div class="tag-select-list">
+        <el-check-tag v-for="tg in tagList" :key="tg.tagId"
+                      :checked="isTagChecked(tg.tagId)"
+                      @change="handleToggleTag(tg)"
+                      :style="{borderColor: tg.color}">
+          <span class="tag-dot" :style="{background: tg.color}"></span>
+          {{tg.name}}
+        </el-check-tag>
+        <div v-if="tagList.length === 0" class="empty-hint">{{$t('noFolder')}}</div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -118,8 +159,8 @@ import {useAccountStore} from "@/store/account.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {starAdd, starCancel} from "@/request/star.js";
 import {aiClassify as aiClassifyReq, aiTagEmail as aiTagReq} from "@/request/ai.js";
-import {folderList} from "@/request/folder.js";
-import {tagList} from "@/request/tag.js";
+import {folderList as fetchFolderList} from "@/request/folder.js";
+import {tagList as fetchTagList} from "@/request/tag.js";
 import {getExtName, formatBytes} from "@/utils/file-utils.js";
 import {cvtR2Url,toOssDomain} from "@/utils/convert.js";
 import {getIconByName} from "@/utils/icon-utils.js";
@@ -283,6 +324,75 @@ const handleDelete = () => {
 }
 
 const showFolderDialog = ref(false)
+const showTagDialog = ref(false)
+const folderList = ref([])
+const tagList = ref([])
+
+watch(showFolderDialog, async (v) => {
+  if (v) folderList.value = await fetchFolderList()
+})
+
+watch(showTagDialog, async (v) => {
+  if (v) tagList.value = await fetchTagList()
+})
+
+function isTagChecked(tagId) {
+  return (email.tagList || []).some(t => t.tagId === tagId)
+}
+
+async function handleMoveToFolder(f) {
+  try {
+    await emailMoveFolder(String(email.emailId), f.folderId)
+    email.folderId = f.folderId
+    email.folderName = f.name
+    showFolderDialog.value = false
+    ElMessage.success(t('folderUpdated'))
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function handleRemoveFolder() {
+  try {
+    await emailMoveFolder(String(email.emailId), null)
+    email.folderId = null
+    email.folderName = null
+    ElMessage.success(t('folderUpdated'))
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function handleToggleTag(tg) {
+  try {
+    let currentIds = (email.tagList || []).map(t => t.tagId)
+    const idx = currentIds.indexOf(tg.tagId)
+    if (idx >= 0) {
+      currentIds.splice(idx, 1)
+    } else {
+      currentIds.push(tg.tagId)
+    }
+    await emailSetTags(email.emailId, currentIds)
+    if (idx >= 0) {
+      email.tagList = email.tagList.filter(t => t.tagId !== tg.tagId)
+    } else {
+      email.tagList = email.tagList || []
+      email.tagList.push({tagId: tg.tagId, tagName: tg.name, tagColor: tg.color})
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function handleRemoveTag(tg) {
+  try {
+    let currentIds = (email.tagList || []).map(t => t.tagId).filter(id => id !== tg.tagId)
+    await emailSetTags(email.emailId, currentIds)
+    email.tagList = email.tagList.filter(t => t.tagId !== tg.tagId)
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 async function handleAiClassify() {
   aiPopoverVisible.value = false
@@ -567,11 +677,80 @@ async function handleAiTag() {
 }
 
 .tag-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
   border: 1px solid;
+}
+
+.tag-remove-icon {
+  color: rgba(0,0,0,0.3);
+  cursor: pointer;
+  vertical-align: middle;
+  &:hover {
+    color: #f56c6c;
+  }
+}
+
+.folder-badge-add {
+  border: 1px dashed var(--el-border-color);
+  color: var(--el-text-color-secondary);
+}
+
+.tag-badge-add {
+  border: 1px dashed var(--el-border-color) !important;
+  color: var(--el-text-color-secondary) !important;
+  cursor: pointer;
+  &:hover {
+    border-color: var(--el-color-primary) !important;
+    color: var(--el-color-primary) !important;
+  }
+}
+
+.folder-select-list, .tag-select-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.folder-select-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  &:hover {
+    background: var(--el-fill-color-light);
+  }
+  &.active {
+    background: var(--el-fill-color);
+    font-weight: 500;
+  }
+}
+
+.tag-select-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-select-list .el-check-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.empty-hint {
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  padding: 20px 0;
+  font-size: 13px;
 }
 
 

@@ -28,25 +28,29 @@
         </el-menu-item>
 
         <!-- Folders section -->
-        <div class="section-title" v-if="folderStore.folders.length > 0">
-          <span>{{$t('folders')}}</span>
+        <div class="section-header">
+          <span class="section-title" v-if="folderStore.folders.length > 0">{{$t('folders')}}</span>
+          <Icon class="section-add-icon" icon="mdi:plus" width="16" height="16" @click="openAddFolder" />
         </div>
         <el-menu-item v-for="f in folderStore.folders" :key="'folder-'+f.folderId"
                       @click="router.push({path: '/email-folder/' + f.folderId})"
                       :class="route.params.folderId == f.folderId ? 'choose-item' : ''">
           <Icon :icon="f.icon || 'mdi:folder-outline'" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{f.name}}</span>
+          <Icon class="item-delete-icon" icon="mdi:close" width="14" height="14" @click.stop="handleDeleteFolder(f)" />
         </el-menu-item>
 
         <!-- Tags section -->
-        <div class="section-title" v-if="tagStore.tags.length > 0">
-          <span>{{$t('tags')}}</span>
+        <div class="section-header">
+          <span class="section-title" v-if="tagStore.tags.length > 0">{{$t('tags')}}</span>
+          <Icon class="section-add-icon" icon="mdi:plus" width="16" height="16" @click="openAddTag" />
         </div>
         <el-menu-item v-for="tg in tagStore.tags" :key="'tag-'+tg.tagId"
                       @click="router.push({path: '/email-tag/' + tg.tagId})"
                       :class="route.params.tagId == tg.tagId ? 'choose-item' : ''">
           <span class="tag-dot" :style="{background: tg.color}"></span>
           <span class="menu-name" style="margin-left: 17px">{{tg.name}}</span>
+          <Icon class="item-delete-icon" icon="mdi:close" width="14" height="14" @click.stop="handleDeleteTag(tg)" />
         </el-menu-item>
 
         <el-menu-item @click="router.push({name: 'analysis'})" index="analysis"
@@ -99,8 +103,13 @@ import {Icon} from "@iconify/vue";
 import {useSettingStore} from "@/store/setting.js";
 import {useFolderStore} from "@/store/folder.js";
 import {useTagStore} from "@/store/tag.js";
+import {folderAdd, folderDelete} from "@/request/folder.js";
+import {tagAdd, tagDelete} from "@/request/tag.js";
+import {ElMessage, ElMessageBox} from 'element-plus';
+import {useI18n} from "vue-i18n";
 import {onMounted} from "vue";
 
+const {t} = useI18n();
 const settingStore = useSettingStore();
 const folderStore = useFolderStore();
 const tagStore = useTagStore();
@@ -112,6 +121,58 @@ onMounted(async () => {
     await tagStore.refreshTags();
   } catch {}
 });
+
+async function openAddFolder() {
+  try {
+    const {value} = await ElMessageBox.prompt(t('folderNamePlaceholder'), t('createFolder'), {
+      confirmButtonText: t('createFolder'),
+      cancelButtonText: 'Cancel',
+      inputPattern: /\S+/,
+      inputErrorMessage: t('folderNamePlaceholder')
+    });
+    await folderAdd(value.trim(), '');
+    await folderStore.refreshFolders();
+    ElMessage.success(t('folderCreated'));
+  } catch {}
+}
+
+async function handleDeleteFolder(f) {
+  try {
+    await ElMessageBox.confirm(
+      t('confirmDeleteFolder', {name: f.name}),
+      {confirmButtonText: 'OK', cancelButtonText: 'Cancel', type: 'warning'}
+    );
+    await folderDelete(f.folderId);
+    await folderStore.refreshFolders();
+    ElMessage.success(t('folderDeleted'));
+  } catch {}
+}
+
+async function openAddTag() {
+  try {
+    const {value} = await ElMessageBox.prompt(t('tagNamePlaceholder'), t('createTag'), {
+      confirmButtonText: t('createTag'),
+      cancelButtonText: 'Cancel',
+      inputPattern: /\S+/,
+      inputErrorMessage: t('tagNamePlaceholder')
+    });
+    await tagAdd(value.trim(), '#409EFF');
+    await tagStore.refreshTags();
+    ElMessage.success(t('tagCreated'));
+  } catch {}
+}
+
+async function handleDeleteTag(tg) {
+  try {
+    await ElMessageBox.confirm(
+      t('confirmDeleteTag', {name: tg.name}),
+      {confirmButtonText: 'OK', cancelButtonText: 'Cancel', type: 'warning'}
+    );
+    await tagDelete(tg.tagId);
+    await tagStore.refreshTags();
+    ElMessage.success(t('tagDeleted'));
+  } catch {}
+}
 </script>
 
 <style lang="scss" scoped>
@@ -212,11 +273,44 @@ onMounted(async () => {
 }
 
 .section-title {
-  padding: 10px 20px 4px;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 4px;
+}
+
+.section-add-icon {
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;
+  &:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.item-delete-icon {
+  color: rgba(255, 255, 255, 0.3);
+  margin-left: auto;
+  padding: 2px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.el-menu-item:hover .item-delete-icon {
+  opacity: 1;
+  &:hover {
+    color: #f56c6c;
+  }
 }
 
 .tag-dot {
