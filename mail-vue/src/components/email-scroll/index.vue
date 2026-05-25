@@ -219,6 +219,22 @@
               </div>
             </template>
           </el-dropdown-item>
+          <el-dropdown-item v-if="['email','star','send'].includes(props.type)" @click="openRightFolderMenu">
+            <template #default>
+              <div class="right-dropdown-item">
+                <Icon icon="mdi:folder-outline" width="18" height="18" />
+                <span>{{t('moveToFolder')}}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="['email','star','send'].includes(props.type)" @click="openRightTagMenu">
+            <template #default>
+              <div class="right-dropdown-item">
+                <Icon icon="mdi:tag-outline" width="18" height="18" />
+                <span>{{t('addTag')}}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
           <el-dropdown-item @click="rightDelete(rightClickEmail.emailId)">
             <template #default>
               <div class="right-dropdown-item">
@@ -230,6 +246,36 @@
         </el-dropdown-menu>
       </template>
     </el-dropdown>
+
+    <!-- Right-click folder dialog -->
+    <el-dialog v-model="showRightFolderDialog" :title="t('selectFolder')" width="360px" append-to-body>
+      <div class="rc-dialog-list">
+        <div class="rc-dialog-item" v-for="f in rightFolderList" :key="f.folderId" @click="handleRightMoveFolder(f)">
+          <Icon :icon="f.icon || 'mdi:folder-outline'" width="18" height="18" />
+          <span>{{f.name}}</span>
+        </div>
+        <div v-if="rightFolderList.length === 0" class="rc-dialog-empty">{{t('noFolder')}}</div>
+      </div>
+      <div class="rc-dialog-footer">
+        <el-button size="small" @click="handleRightCreateFolder"><Icon icon="mdi:plus" width="14" height="14" /> {{t('createFolder')}}</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- Right-click tag dialog -->
+    <el-dialog v-model="showRightTagDialog" :title="t('selectTags')" width="360px" append-to-body>
+      <div class="rc-dialog-list rc-tag-list">
+        <el-check-tag v-for="tg in rightTagList" :key="tg.tagId"
+                      :checked="isRightTagChecked(tg.tagId)"
+                      @change="handleRightToggleTag(tg)">
+          <span class="tag-dot" :style="{background: tg.color}"></span>
+          {{tg.name}}
+        </el-check-tag>
+        <div v-if="rightTagList.length === 0" class="rc-dialog-empty">{{t('noFolder')}}</div>
+      </div>
+      <div class="rc-dialog-footer">
+        <el-button size="small" @click="handleRightCreateTag"><Icon icon="mdi:plus" width="14" height="14" /> {{t('createTag')}}</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -247,6 +293,12 @@ import {EmailUnreadEnum} from "@/enums/email-enum.js";
 import { UseVirtualList } from '@vueuse/components'
 import { useScroll } from '@vueuse/core'
 import {callWriter} from "@/utils/writer-utils.js";
+import {emailMoveFolder, emailSetTags} from "@/request/email.js";
+import {folderList as fetchFolderList, folderAdd as fetchFolderAdd} from "@/request/folder.js";
+import {tagList as fetchTagList, tagAdd as fetchTagAdd} from "@/request/tag.js";
+import {useFolderStore} from "@/store/folder.js";
+import {useTagStore} from "@/store/tag.js";
+import {ElMessage, ElMessageBox} from "element-plus";
 
 const props = defineProps({
   getEmailList: Function,
@@ -326,6 +378,12 @@ const dropdownCloseLock = ref(false);
 const dropdownShow = ref(false);
 const rightClickEmail = ref({});
 const checkedEmailCount = ref(0);
+const folderStore = useFolderStore();
+const tagStore = useTagStore();
+const showRightFolderDialog = ref(false);
+const showRightTagDialog = ref(false);
+const rightFolderList = ref([]);
+const rightTagList = ref([]);
 let timer = null
 const position = ref(
     DOMRect.fromRect({
@@ -527,6 +585,77 @@ const handleContextmenu = (event, email) => {
 
   rightClickEmail.value = email;
   rightClickEmail.value.rightChecked = true
+}
+
+async function openRightFolderMenu() {
+  rightFolderList.value = await fetchFolderList()
+  showRightFolderDialog.value = true
+}
+
+async function openRightTagMenu() {
+  rightTagList.value = await fetchTagList()
+  showRightTagDialog.value = true
+}
+
+async function handleRightMoveFolder(f) {
+  try {
+    await emailMoveFolder(String(rightClickEmail.value.emailId), f.folderId)
+    rightClickEmail.value.folderId = f.folderId
+    rightClickEmail.value.folderName = f.name
+    showRightFolderDialog.value = false
+    ElMessage.success(t('folderUpdated'))
+  } catch (e) { console.error(e) }
+}
+
+function isRightTagChecked(tagId) {
+  const list = rightClickEmail.value.tagList || []
+  return list.some(t => t.tagId === tagId)
+}
+
+async function handleRightToggleTag(tg) {
+  try {
+    let list = rightClickEmail.value.tagList || []
+    let ids = list.map(t => t.tagId)
+    const idx = ids.indexOf(tg.tagId)
+    if (idx >= 0) {
+      ids.splice(idx, 1)
+      rightClickEmail.value.tagList = list.filter(t => t.tagId !== tg.tagId)
+    } else {
+      ids.push(tg.tagId)
+      rightClickEmail.value.tagList = [...list, {tagId: tg.tagId, tagName: tg.name, tagColor: tg.color}]
+    }
+    await emailSetTags(rightClickEmail.value.emailId, ids)
+  } catch (e) { console.error(e) }
+}
+
+async function handleRightCreateFolder() {
+  try {
+    const {value} = await ElMessageBox.prompt(t('folderNamePlaceholder'), t('createFolder'), {
+      confirmButtonText: t('createFolder'),
+      cancelButtonText: t('cancel'),
+      inputPattern: /\S+/,
+      inputErrorMessage: t('folderNamePlaceholder')
+    })
+    const res = await fetchFolderAdd(value.trim(), '')
+    await folderStore.refreshFolders()
+    rightFolderList.value = await fetchFolderList()
+    ElMessage.success(t('folderCreated'))
+  } catch {}
+}
+
+async function handleRightCreateTag() {
+  try {
+    const {value} = await ElMessageBox.prompt(t('tagNamePlaceholder'), t('createTag'), {
+      confirmButtonText: t('createTag'),
+      cancelButtonText: t('cancel'),
+      inputPattern: /\S+/,
+      inputErrorMessage: t('tagNamePlaceholder')
+    })
+    await fetchTagAdd(value.trim(), '#409EFF')
+    await tagStore.refreshTags()
+    rightTagList.value = await fetchTagList()
+    ElMessage.success(t('tagCreated'))
+  } catch {}
 }
 
 function updateHasScrollbar() {
@@ -1363,6 +1492,61 @@ ul {
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+.rc-dialog-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.rc-dialog-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  &:hover {
+    background: var(--el-fill-color-light);
+  }
+}
+
+.rc-dialog-empty {
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  padding: 16px 0;
+  font-size: 13px;
+}
+
+.rc-dialog-footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  display: flex;
+  justify-content: center;
+}
+
+.rc-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rc-tag-list .el-check-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.tag-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 </style>
