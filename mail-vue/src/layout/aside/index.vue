@@ -29,7 +29,7 @@
 
         <!-- Folders section -->
         <div class="section-header">
-          <span class="section-title" v-if="folderStore.folders.length > 0">{{$t('folders')}}</span>
+          <span class="section-title">{{$t('folders')}}</span>
           <Icon class="section-add-icon" icon="mdi:plus" width="16" height="16" @click="openAddFolder" />
         </div>
         <el-menu-item v-for="f in folderStore.folders" :key="'folder-'+f.folderId"
@@ -42,7 +42,7 @@
 
         <!-- Tags section -->
         <div class="section-header">
-          <span class="section-title" v-if="tagStore.tags.length > 0">{{$t('tags')}}</span>
+          <span class="section-title">{{$t('tags')}}</span>
           <Icon class="section-add-icon" icon="mdi:plus" width="16" height="16" @click="openAddTag" />
         </div>
         <el-menu-item v-for="tg in tagStore.tags" :key="'tag-'+tg.tagId"
