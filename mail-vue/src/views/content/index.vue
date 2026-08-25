@@ -71,11 +71,11 @@
             <el-alert v-if="email.status === 4" :closable="false" :title="$t('complained')" class="email-msg" type="warning" show-icon />
             <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
           </div>
-          <el-scrollbar class="htm-scrollbar" :class="email.attList.length === 0 ? 'bottom-distance' : ''">
+          <el-scrollbar class="htm-scrollbar" :class="!email.attList?.length ? 'bottom-distance' : ''">
             <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
             <pre v-else class="email-text" >{{email.text}}</pre>
           </el-scrollbar>
-          <div class="att" v-if="email.attList.length > 0">
+          <div class="att" v-if="email.attList?.length > 0">
             <div class="att-title">
               <span>{{$t('attachments')}}</span>
               <span>{{$t('attCount',{total: email.attList.length})}}</span>
@@ -149,7 +149,7 @@
 <script setup>
 import ShadowHtml from '@/components/shadow-html/index.vue'
 import AiDialog from '@/components/ai-dialog/index.vue'
-import {reactive, ref, watch, onMounted, onUnmounted} from "vue";
+import {computed, reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead, emailMoveFolder, emailSetTags} from "@/request/email.js";
@@ -178,7 +178,13 @@ const settingStore = useSettingStore();
 const accountStore = useAccountStore();
 const emailStore = useEmailStore();
 const router = useRouter()
-const email = emailStore.contentData.email
+const email = computed(() => emailStore.contentData.email || {
+  emailId: 0,
+  attList: [],
+  content: '',
+  text: '',
+  recipient: '[]',
+})
 const showPreview = ref(false)
 const srcList = reactive([])
 const aiDialogVisible = ref(false)
@@ -192,9 +198,9 @@ watch(() => accountStore.currentAccountId, () => {
 })
 
 onMounted(() => {
-  if (emailStore.contentData.showUnread && email.unread === EmailUnreadEnum.UNREAD) {
-    email.unread = EmailUnreadEnum.READ;
-    emailRead([email.emailId]);
+  if (emailStore.contentData.showUnread && email.value.unread === EmailUnreadEnum.UNREAD && email.value.emailId) {
+    email.value.unread = EmailUnreadEnum.READ;
+    emailRead([email.value.emailId]);
   }
 })
 
@@ -203,11 +209,11 @@ onUnmounted(() => {
 })
 
 function openReply() {
-  callWriter(uiStore, 'openReply', email)
+  callWriter(uiStore, 'openReply', email.value)
 }
 
 function openForward() {
-  callWriter(uiStore, 'openForward', email)
+  callWriter(uiStore, 'openForward', email.value)
 }
 
 const aiPopoverVisible = ref(false)
@@ -220,20 +226,20 @@ function triggerAiAction(action) {
 function handleAiAction(command) {
   aiAction.value = command
   const domain = settingStore.settings.r2Domain
-  aiContent.value = email.content
-    ? email.content.replace(/{{domain}}/g, toOssDomain(domain) + '/')
-    : email.text || ''
+  aiContent.value = email.value.content
+    ? email.value.content.replace(/{{domain}}/g, toOssDomain(domain) + '/')
+    : email.value.text || ''
   aiMetadata.value = {
-    from: `${email.name} <${email.sendEmail}>`,
-    to: formateReceive(email.recipient),
-    date: email.createTime
+    from: `${email.value.name} <${email.value.sendEmail}>`,
+    to: formateReceive(email.value.recipient),
+    date: email.value.createTime
   }
   aiDialogVisible.value = true
 }
 
 function handleAiInsert(aiContent) {
   if (aiAction.value === 'reply') {
-    callWriter(uiStore, 'openReply', email, aiContent)
+    callWriter(uiStore, 'openReply', email.value, aiContent)
   }
 }
 
@@ -260,32 +266,33 @@ function isImage(filename) {
 }
 
 function formateReceive(recipient) {
+  if (!recipient) return ''
   recipient = JSON.parse(recipient)
   return recipient.map(item => item.address).join(', ')
 }
 
 function changeStar() {
-  if (email.isStar) {
-    email.isStar = 0;
-    starCancel(email.emailId).then(() => {
-      email.isStar = 0;
-      emailStore.cancelStarEmailId = email.emailId
+  if (email.value.isStar) {
+    email.value.isStar = 0;
+    starCancel(email.value.emailId).then(() => {
+      email.value.isStar = 0;
+      emailStore.cancelStarEmailId = email.value.emailId
       setTimeout(() => emailStore.cancelStarEmailId = 0)
-      emailStore.starScroll?.deleteEmail([email.emailId])
+      emailStore.starScroll?.deleteEmail([email.value.emailId])
     }).catch((e) => {
       console.error(e)
-      email.isStar = 1;
+      email.value.isStar = 1;
     })
   } else {
-    email.isStar = 1;
-    starAdd(email.emailId).then(() => {
-      email.isStar = 1;
-      emailStore.addStarEmailId = email.emailId
+    email.value.isStar = 1;
+    starAdd(email.value.emailId).then(() => {
+      email.value.isStar = 1;
+      emailStore.addStarEmailId = email.value.emailId
       setTimeout(() => emailStore.addStarEmailId = 0)
-      emailStore.starScroll?.addItem(email)
+      emailStore.starScroll?.addItem(email.value)
     }).catch((e) => {
       console.error(e)
-      email.isStar = 0;
+      email.value.isStar = 0;
     })
   }
 }
@@ -301,23 +308,23 @@ const handleDelete = () => {
     type: 'warning'
   }).then(() => {
     if (emailStore.contentData.delType === 'logic') {
-      emailDelete(email.emailId).then(() => {
+      emailDelete(email.value.emailId).then(() => {
         ElMessage({
           message: t('delSuccessMsg'),
           type: 'success',
           plain: true,
         })
-        emailStore.deleteIds = [email.emailId]
+        emailStore.deleteIds = [email.value.emailId]
       })
     } else  {
 
-      allEmailDelete(email.emailId).then(() => {
+      allEmailDelete(email.value.emailId).then(() => {
         ElMessage({
           message: t('delSuccessMsg'),
           type: 'success',
           plain: true,
         })
-        emailStore.deleteIds = [email.emailId]
+        emailStore.deleteIds = [email.value.emailId]
       })
     }
 
@@ -339,14 +346,14 @@ watch(showTagDialog, async (v) => {
 })
 
 function isTagChecked(tagId) {
-  return (email.tagList || []).some(t => t.tagId === tagId)
+  return (email.value.tagList || []).some(t => t.tagId === tagId)
 }
 
 async function handleMoveToFolder(f) {
   try {
-    await emailMoveFolder(String(email.emailId), f.folderId)
-    email.folderId = f.folderId
-    email.folderName = f.name
+    await emailMoveFolder(String(email.value.emailId), f.folderId)
+    email.value.folderId = f.folderId
+    email.value.folderName = f.name
     showFolderDialog.value = false
     ElMessage.success(t('folderUpdated'))
   } catch (e) {
@@ -356,9 +363,9 @@ async function handleMoveToFolder(f) {
 
 async function handleRemoveFolder() {
   try {
-    await emailMoveFolder(String(email.emailId), null)
-    email.folderId = null
-    email.folderName = null
+    await emailMoveFolder(String(email.value.emailId), null)
+    email.value.folderId = null
+    email.value.folderName = null
     ElMessage.success(t('folderUpdated'))
   } catch (e) {
     console.error(e)
@@ -367,19 +374,19 @@ async function handleRemoveFolder() {
 
 async function handleToggleTag(tg) {
   try {
-    let currentIds = (email.tagList || []).map(t => t.tagId)
+    let currentIds = (email.value.tagList || []).map(t => t.tagId)
     const idx = currentIds.indexOf(tg.tagId)
     if (idx >= 0) {
       currentIds.splice(idx, 1)
     } else {
       currentIds.push(tg.tagId)
     }
-    await emailSetTags(email.emailId, currentIds)
+    await emailSetTags(email.value.emailId, currentIds)
     if (idx >= 0) {
-      email.tagList = email.tagList.filter(t => t.tagId !== tg.tagId)
+      email.value.tagList = email.value.tagList.filter(t => t.tagId !== tg.tagId)
     } else {
-      email.tagList = email.tagList || []
-      email.tagList.push({tagId: tg.tagId, tagName: tg.name, tagColor: tg.color})
+      email.value.tagList = email.value.tagList || []
+      email.value.tagList.push({tagId: tg.tagId, tagName: tg.name, tagColor: tg.color})
     }
   } catch (e) {
     console.error(e)
@@ -388,9 +395,9 @@ async function handleToggleTag(tg) {
 
 async function handleRemoveTag(tg) {
   try {
-    let currentIds = (email.tagList || []).map(t => t.tagId).filter(id => id !== tg.tagId)
-    await emailSetTags(email.emailId, currentIds)
-    email.tagList = email.tagList.filter(t => t.tagId !== tg.tagId)
+    let currentIds = (email.value.tagList || []).map(t => t.tagId).filter(id => id !== tg.tagId)
+    await emailSetTags(email.value.emailId, currentIds)
+    email.value.tagList = email.value.tagList.filter(t => t.tagId !== tg.tagId)
   } catch (e) {
     console.error(e)
   }
@@ -400,10 +407,10 @@ async function handleAiClassify() {
   aiPopoverVisible.value = false
   try {
     ElMessage.info(t('aiClassifying'))
-    const res = await aiClassifyReq(email.emailId)
+    const res = await aiClassifyReq(email.value.emailId)
     if (res) {
-      email.folderId = res.folder?.folderId
-      email.folderName = res.folder?.name
+      email.value.folderId = res.folder?.folderId
+      email.value.folderName = res.folder?.name
       ElMessage.success(t('aiClassifySuccess'))
     }
   } catch (e) {
@@ -415,9 +422,9 @@ async function handleAiTag() {
   aiPopoverVisible.value = false
   try {
     ElMessage.info(t('aiTagging'))
-    const res = await aiTagReq(email.emailId)
+    const res = await aiTagReq(email.value.emailId)
     if (res && res.length > 0) {
-      email.tagList = res.map(tg => ({
+      email.value.tagList = res.map(tg => ({
         tagId: tg.tagId,
         tagName: tg.name,
         tagColor: tg.color

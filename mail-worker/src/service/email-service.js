@@ -1,5 +1,6 @@
 import orm from '../entity/orm';
 import email from '../entity/email';
+import { emailListColumns, emailBriefColumns, EMAIL_LIST_TEXT_LEN } from '../lib/email-list-columns';
 import { attConst, emailConst, isDel, settingConst } from '../const/entity-const';
 import { and, desc, eq, gt, inArray, lt, count, asc, sql, ne, or, like, lte, gte } from 'drizzle-orm';
 import { star } from '../entity/star';
@@ -31,7 +32,7 @@ const emailService = {
 
 	async list(c, params, userId) {
 
-		let { emailId, type, accountId, size, timeSort, allReceive, folderId } = params;
+		let { emailId, type, accountId, size, timeSort, allReceive, folderId, full } = params;
 
 		size = Number(size);
 		emailId = Number(emailId) || 0;
@@ -39,6 +40,7 @@ const emailService = {
 		accountId = Number(accountId);
 		allReceive = Number(allReceive);
 		folderId = folderId !== undefined && folderId !== null && folderId !== '' ? Number(folderId) : undefined;
+		full = Number(full) === 1;
 
 		if (size > 50) {
 			size = 50;
@@ -51,10 +53,11 @@ const emailService = {
 
 		const filters = this.emailListFilters({ userId, accountId, type, allReceive, emailId, timeSort, folderId });
 		const countFilters = this.emailListFilters({ userId, accountId, type, allReceive, folderId, withCursor: false });
+		const columns = full ? emailListColumns : emailBriefColumns;
 
 		const query = orm(c)
 			.select({
-				...email,
+				...columns,
 				starId: star.starId
 			})
 			.from(email)
@@ -87,7 +90,11 @@ const emailService = {
 			.where(and(...countFilters))
 			.get();
 
-		const latestEmailQuery = orm(c).select().from(email).where(
+		const latestEmailQuery = orm(c).select({
+			emailId: email.emailId,
+			accountId: email.accountId,
+			userId: email.userId,
+		}).from(email).where(
 			and(
 				eq(email.userId, userId),
 				eq(email.type, type),
@@ -103,8 +110,11 @@ const emailService = {
 			isStar: item.starId != null ? 1 : 0
 		}));
 
-
-		await this.emailAddAtt(c, list);
+		if (full) {
+			await this.emailAddAtt(c, list);
+		} else {
+			this.applyListText(list);
+		}
 
 		await this.emailAddTags(c, list);
 
@@ -117,6 +127,19 @@ const emailService = {
 		}
 
 		return { list, total: totalRow.total, latestEmail };
+	},
+
+	toListText(item) {
+		const raw = emailUtils.formatText(item.text) || emailUtils.htmlToText(item.content);
+		return raw.replace(/\s+/g, ' ').trim().slice(0, EMAIL_LIST_TEXT_LEN);
+	},
+
+	applyListText(list) {
+		for (const item of list) {
+			item.text = this.toListText(item);
+			delete item.content;
+		}
+		return list;
 	},
 
 	emailListFilters({ userId, accountId, type, allReceive, emailId, timeSort, folderId, withCursor = true }) {
@@ -158,27 +181,25 @@ const emailService = {
 		}
 
 		if (userEmail) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%' + userEmail + '%'}`);
+			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${userEmail + '%'}`);
 		}
 
 		if (accountEmail) {
 			conditions.push(
 				or(
-					sql`${email.toEmail} COLLATE NOCASE LIKE ${'%' + accountEmail + '%'}`,
-					sql`${email.sendEmail} COLLATE NOCASE LIKE ${'%' + accountEmail + '%'}`,
+					sql`${email.toEmail} COLLATE NOCASE LIKE ${accountEmail + '%'}`,
+					sql`${email.sendEmail} COLLATE NOCASE LIKE ${accountEmail + '%'}`,
 				)
 			);
 		}
 
 		if (name) {
-			conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${'%' + name + '%'}`);
+			conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${name + '%'}`);
 		}
 
 		if (subject) {
-			conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${'%' + subject + '%'}`);
+			conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${subject + '%'}`);
 		}
-
-		conditions.push(ne(email.status, emailConst.status.SAVING));
 
 		if (withCursor && emailId) {
 			conditions.push(timeSort ? gt(email.emailId, emailId) : lt(email.emailId, emailId));
@@ -763,7 +784,7 @@ const emailService = {
 			allReceive = accountRow.allReceive;
 		}
 
-		let list = await orm(c).select({...email}).from(email)
+		let list = await orm(c).select({ ...emailBriefColumns }).from(email)
 			.innerJoin(
 				account,
 				eq(account.accountId, email.accountId)
@@ -780,9 +801,7 @@ const emailService = {
 			.orderBy(desc(email.emailId))
 			.limit(20);
 
-		await this.emailAddAtt(c, list);
-
-		return list;
+		return this.applyListText(list);
 	},
 
 	async physicsDelete(c, params) {
@@ -825,12 +844,13 @@ const emailService = {
 
 	async allList(c, params) {
 
-		let { emailId, size, name, subject, accountEmail, userEmail, type, timeSort } = params;
+		let { emailId, size, name, subject, accountEmail, userEmail, type, timeSort, full } = params;
 
 		size = Number(size);
 
 		emailId = Number(emailId) || 0;
 		timeSort = Number(timeSort);
+		full = Number(full) === 1;
 
 		if (size > 50) {
 			size = 50;
@@ -838,16 +858,22 @@ const emailService = {
 
 		const filters = this.allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort });
 		const countFilters = this.allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort, withCursor: false });
+		const columns = full ? emailListColumns : emailBriefColumns;
 
-		const query = orm(c).select({ ...email, userEmail: user.email })
+		const query = orm(c).select({ ...columns, userEmail: user.email })
 			.from(email)
 			.leftJoin(user, eq(email.userId, user.userId))
 			.where(and(...filters));
 
-		const queryCount = orm(c).select({ total: count() })
-			.from(email)
-			.leftJoin(user, eq(email.userId, user.userId))
-			.where(and(...countFilters));
+		// count 不搜用户时无需 join user
+		const queryCount = userEmail
+			? orm(c).select({ total: count() })
+				.from(email)
+				.leftJoin(user, eq(email.userId, user.userId))
+				.where(and(...countFilters))
+			: orm(c).select({ total: count() })
+				.from(email)
+				.where(and(...countFilters));
 
 		if (timeSort) {
 			query.orderBy(asc(email.emailId));
@@ -857,16 +883,21 @@ const emailService = {
 
 		const listQuery = query.limit(size).all();
 		const totalQuery = queryCount.get();
-		const latestEmailQuery = orm(c).select().from(email)
-			.where(and(
-				eq(email.type, emailConst.type.RECEIVE),
-				ne(email.status, emailConst.status.SAVING)
-			))
+		const latestEmailQuery = orm(c).select({
+			emailId: email.emailId,
+			accountId: email.accountId,
+			userId: email.userId,
+		}).from(email)
+			.where(eq(email.type, emailConst.type.RECEIVE))
 			.orderBy(desc(email.emailId)).limit(1).get();
 
 		let [list, totalRow, latestEmail] = await Promise.all([listQuery, totalQuery, latestEmailQuery]);
 
-		await this.emailAddAtt(c, list);
+		if (full) {
+			await this.emailAddAtt(c, list);
+		} else {
+			this.applyListText(list);
+		}
 
 		if (!latestEmail) {
 			latestEmail = {
@@ -883,20 +914,17 @@ const emailService = {
 
 		const { emailId } = params;
 
-		let list = await orm(c).select({...email, userEmail: user.email}).from(email)
+		let list = await orm(c).select({ ...emailBriefColumns, userEmail: user.email }).from(email)
 			.leftJoin(user, eq(email.userId, user.userId))
 			.where(
 				and(
 					gt(email.emailId, emailId),
-					eq(email.type, emailConst.type.RECEIVE),
-					ne(email.status, emailConst.status.SAVING)
+					eq(email.type, emailConst.type.RECEIVE)
 				))
 			.orderBy(desc(email.emailId))
 			.limit(20);
 
-		await this.emailAddAtt(c, list);
-
-		return list;
+		return this.applyListText(list);
 	},
 
 	async emailAddAtt(c, list) {

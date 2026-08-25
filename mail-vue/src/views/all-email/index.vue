@@ -280,7 +280,7 @@ function typeSelectChange() {
 }
 
 function jumpContent(email) {
-  emailStore.contentData.email = email
+  emailStore.contentData.email = emailStore.toContentEmail(email)
   emailStore.contentData.delType = 'physics'
   emailStore.contentData.showStar = false
   emailStore.contentData.showReply = false
@@ -289,7 +289,7 @@ function jumpContent(email) {
 
 
 function getEmailList(emailId, size) {
-  return allEmailList({emailId, size, ...params})
+  return emailStore.fetchList(full => allEmailList({emailId, size, full, ...params}))
 }
 
 async function latest() {
