@@ -42,7 +42,7 @@ const aiService = {
 			});
 
 			const content = typeof result === 'string' ? result : result?.response || '';
-			const json = JSON.parse(content);
+			const json = typeof content === 'string' ? JSON.parse(content) : content;
 			if (typeof json.code !== 'string') {
 				return '';
 			}
