@@ -130,7 +130,7 @@ const userService = {
 
 
 		if (email) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%'+ email + '%'}`);
+			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${email + '%'}`);
 		}
 
 
