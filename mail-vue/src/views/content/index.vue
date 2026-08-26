@@ -197,15 +197,48 @@ watch(() => accountStore.currentAccountId, () => {
   handleBack()
 })
 
-onMounted(() => {
-  if (emailStore.contentData.showUnread && email.value.unread === EmailUnreadEnum.UNREAD && email.value.emailId) {
-    email.value.unread = EmailUnreadEnum.READ;
-    emailRead([email.value.emailId]);
+let readRequesting = false
+
+function tryMarkRead() {
+  if (!emailStore.contentData.showUnread || readRequesting) return
+  const current = email.value
+  if (!current?.emailId || current.unread !== EmailUnreadEnum.UNREAD) return
+
+  // 等详情数据就绪（detailMap 已写入，或正文已有内容）再标已读
+  const full = emailStore.detailMap[current.emailId]
+  const detailReady = !!full || !!(current.content || current.text)
+  if (!detailReady) return
+
+  readRequesting = true
+  const emailId = current.emailId
+  current.unread = EmailUnreadEnum.READ
+  if (emailStore.detailMap[emailId]) {
+    emailStore.detailMap[emailId].unread = EmailUnreadEnum.READ
   }
+  emailStore.markListRead(emailId)
+  emailRead([emailId]).finally(() => {
+    readRequesting = false
+  })
+}
+
+watch(
+  () => [
+    email.value?.emailId,
+    email.value?.content,
+    email.value?.text,
+    emailStore.detailMap[email.value?.emailId]
+  ],
+  () => tryMarkRead(),
+  { flush: 'post' }
+)
+
+onMounted(() => {
+  tryMarkRead()
 })
 
 onUnmounted(() => {
   emailStore.contentData.showUnread = false;
+  readRequesting = false
 })
 
 function openReply() {
