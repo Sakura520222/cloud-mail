@@ -95,7 +95,7 @@
                         </slot>
                       </span>
                     </span>
-                    <span class="email-content">{{ item.text || '\u200B' }}</span>
+                    <span class="email-content">{{ item.listText || item.text || '\u200B' }}</span>
                   </div>
                   <div class="user-info" v-if="showUserInfo">
                     <div class="user">
@@ -488,7 +488,7 @@ function onScroll(e) {
 }
 
 const { arrivedState } = useScroll(scrollbarRef, {
-  offset: { bottom: 1200 }
+  offset: { bottom: isMobile.value ? 2200 : 1500 }
 })
 
 
