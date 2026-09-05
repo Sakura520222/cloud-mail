@@ -590,11 +590,15 @@ window.addEventListener('wheel', (event) => {
 })
 
 function openReply(email) {
-  callWriter(uiStore, 'openReply', email)
+  const fullEmail = emailStore.detailMap[email.emailId]
+  if (!fullEmail) return
+  callWriter(uiStore, 'openReply', fullEmail)
 }
 
 function openForward(email) {
-  callWriter(uiStore, 'openForward', email)
+  const fullEmail = emailStore.detailMap[email.emailId]
+  if (!fullEmail) return
+  callWriter(uiStore, 'openForward', fullEmail)
 }
 
 function visibleChange(e) {
