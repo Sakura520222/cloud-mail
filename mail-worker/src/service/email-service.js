@@ -40,7 +40,11 @@ const emailService = {
 		accountId = Number(accountId);
 		allReceive = Number(allReceive);
 		folderId = folderId !== undefined && folderId !== null && folderId !== '' ? Number(folderId) : undefined;
-		full = Number(full) === 1;
+		full = Number(full);
+		if (isNaN(full)) {
+			full = 1;
+		}
+		full = full === 1;
 
 		if (size > 50) {
 			size = 50;
@@ -855,7 +859,11 @@ const emailService = {
 
 		emailId = Number(emailId) || 0;
 		timeSort = Number(timeSort);
-		full = Number(full) === 1;
+		full = Number(full);
+		if (isNaN(full)) {
+			full = 1;
+		}
+		full = full === 1;
 
 		if (size > 50) {
 			size = 50;
