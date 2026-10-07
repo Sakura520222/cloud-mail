@@ -150,11 +150,18 @@ function cancelStar(email) {
 function getEmailList(emailId, size) {
   if (isFolderView.value) {
     const folderId = route.params.folderId;
-    return emailListByFolder(folderId, emailId, size);
+    // folder/tag 端点返回全量数据，手动填充 detailMap，保证详情/回复/转发可用
+    return emailListByFolder(folderId, emailId, size).then(data => {
+      emailStore.applyFullList(data.list);
+      return data;
+    });
   }
   if (isTagView.value) {
     const tagId = route.params.tagId;
-    return emailListByTag(tagId, emailId, size);
+    return emailListByTag(tagId, emailId, size).then(data => {
+      emailStore.applyFullList(data.list);
+      return data;
+    });
   }
   const accountId =  accountStore.currentAccountId;
   const allReceive = accountStore.currentAccount.allReceive;
