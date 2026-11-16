@@ -26,12 +26,8 @@ jobs:
       R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || vars.R2_BUCKET_NAME }}
       PROJECT_LINK: ${{ secrets.PROJECT_LINK || vars.PROJECT_LINK }}
       AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || '@cf/meta/llama-3.1-8b-instruct-fast' }}
-      CLOUDFLARE_EMAIL: ${{ secrets.CF_EMAIL || vars.CF_EMAIL || false }}
+      EMAIL: ${{ secrets.EMAIL || vars.EMAIL || secrets.CF_EMAIL || vars.CF_EMAIL }}
       ANALYSIS_CACHE: ${{ secrets.ANALYSIS_CACHE || vars.ANALYSIS_CACHE || false }}
-      LINUXDO_CLIENT_ID: ${{ secrets.LINUXDO_CLIENT_ID || vars.LINUXDO_CLIENT_ID }}
-      LINUXDO_CLIENT_SECRET: ${{ secrets.LINUXDO_CLIENT_SECRET || vars.LINUXDO_CLIENT_SECRET }}
-      LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL || vars.LINUXDO_CALLBACK_URL }}
-      LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH || vars.LINUXDO_SWITCH }}
 
 
     outputs:
@@ -39,30 +35,30 @@ jobs:
 
 
     steps:
-      - name: 🚚 检出代码仓库 / Checkout repository
+      - name: 🚚 Checkout repository
         uses: actions/checkout@v4
 
-      - name: ⚙ 设置 pnpm / Set up pnpm
+      - name: ⚙ Set up pnpm
         uses: pnpm/action-setup@v4.1.0
         with:
-          version: 9
+          version: 11
 
-      - name: ⚙ 设置 Node.js / Set up Node.js
+      - name: ⚙ Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "pnpm"
           cache-dependency-path: "./mail-worker/pnpm-lock.yaml"
 
-      - name: 📦 安装依赖 / Install dependencies
+      - name: 📦 Install dependencies
         run: pnpm install --frozen-lockfile
         working-directory: ./mail-worker
 
-      - name: 📡 禁用 Wrangler 遥测 / Disable wrangler telemetry
+      - name: 📡 Disable wrangler telemetry
         working-directory: ./mail-worker
         run: pnpm wrangler telemetry disable
 
-      - name: 🛠️ 设置环境 / Set up environment
+      - name: 🛠️ Set up environment
         working-directory: ./mail-worker
         run: |
           
@@ -107,15 +103,11 @@ jobs:
             sed -i '/^project_link = /d' "$CONFIG_FILE"
           fi
           
-          if [ -z "$LINUXDO_CLIENT_ID" ] || [ -z "$LINUXDO_CLIENT_SECRET" ]; then
-            sed -i '/^linuxdo_client_id = /,/^linuxdo_switch = /d' "$CONFIG_FILE"
-          fi
-          
           if [ -z "$CUSTOM_DOMAIN" ]; then
             sed -i '/\[\[routes\]\]/,/^$/d' "$CONFIG_FILE"
           fi
           
-          if [ "$(printf '%s' "$CLOUDFLARE_EMAIL" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+          if [ -n "$EMAIL" ] && [ "$EMAIL" != "false" ]; then
             cat >> "$CONFIG_FILE" <<'EOF'
 
           [[send_email]]
@@ -132,14 +124,10 @@ jobs:
           sed -i "s|\${PROJECT_LINK}|${PROJECT_LINK}|g" "$CONFIG_FILE"
           sed -i "s|\${ANALYSIS_CACHE}|${ANALYSIS_CACHE}|g" "$CONFIG_FILE"
           sed -i "s|\${AI_MODEL}|${AI_MODEL}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CLIENT_ID}|${LINUXDO_CLIENT_ID}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CLIENT_SECRET}|${LINUXDO_CLIENT_SECRET}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CALLBACK_URL}|${LINUXDO_CALLBACK_URL}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_SWITCH}|${LINUXDO_SWITCH}|g" "$CONFIG_FILE"
-          
+
           echo "✅ Environment setup completed."
 
-      - name: ⚡ 设置KV数据库 / Set up KV database
+      - name: ⚡ Set up KV database
         working-directory: ./mail-worker
         run: |
           
@@ -177,7 +165,7 @@ jobs:
           sed -i "s|\${KV_NAMESPACE_ID}|$KV_ID|g" "$CONFIG_FILE"
           echo "✅ Setup completed."
 
-      - name: 🐬 设置D1数据库 / Set up D1 database
+      - name: 🐬 Set up D1 database
         working-directory: ./mail-worker
         run: |
           
@@ -215,7 +203,7 @@ jobs:
           sed -i "s|\${D1_DATABASE_ID}|$D1_ID|g" "$CONFIG_FILE"
           echo "✅ Setup completed."
 
-      - name: 🚀 开始部署 / Start deployment
+      - name: 🚀 Start deployment
         id: deploy
         working-directory: ./mail-worker
         run: |
@@ -240,7 +228,7 @@ jobs:
           echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
           echo "✅ Setup completed."
 
-      - name: ♻️ 初始化数据库 / Initialize database
+      - name: ♻️ Initialize database
         run: |
           echo "🛠️ Starting database initialization..."
           sleep 15
@@ -263,7 +251,7 @@ jobs:
             exit 1
           fi
 
-      - name: 🗑️ 删除运行记录 / Delete workflow runs
+      - name: 🗑️ Delete workflow runs
         uses: GitRML/delete-workflow-runs@main
         continue-on-error: true
         with:

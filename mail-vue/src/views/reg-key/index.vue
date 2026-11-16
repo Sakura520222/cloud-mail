@@ -62,7 +62,7 @@
     </el-scrollbar>
     <el-dialog v-model="showAdd" :title="$t('addRegKey')">
       <div class="container">
-        <el-input v-model="addForm.code" :placeholder="$t('regKey')">
+        <el-input v-model="addForm.code" :placeholder="$t('regKey')" @keyup.enter="submit">
           <template #suffix>
             <Icon @click.stop="genCode" class="gen-code" icon="bitcoin-icons:refresh-filled" width="24" height="24"/>
           </template>
@@ -75,7 +75,7 @@
             type="date"
             :placeholder="$t('validUntil')"
         />
-        <el-input-number v-model="addForm.count" :min="1" :max="99999"/>
+        <el-input-number v-model="addForm.count" :min="1" :max="99999" @keyup.enter="submit"/>
         <el-button class="btn" type="primary" @click="submit" :loading="addLoading"
         >{{ $t('add') }}
         </el-button>
@@ -215,8 +215,12 @@ function formatUserCreateTime(regKey) {
 
 }
 
+function toExpireUtc(expireTime) {
+  return dayjs(expireTime).add(1, 'day').startOf('day').utc().format('YYYY-MM-DD HH:mm:ss')
+}
+
 function formatExpireTime(expireTime) {
-  const expireDate = tzDayjs(expireTime);
+  const expireDate = tzDayjs(expireTime).subtract(1, 'second');
   const currentYear = dayjs().year();
   const expireYear = expireDate.year();
 
@@ -308,9 +312,11 @@ function clearNotUse() {
 
 function submit() {
 
+  if (addLoading.value) return
+
   if (!addForm.code) {
     ElMessage({
-      message: $('emptyRegKeyMsg'),
+      message: t('emptyRegKeyMsg'),
       type: "error",
       plain: true
     })
@@ -345,7 +351,7 @@ function submit() {
   }
 
   addLoading.value = true
-  regKeyAdd(addForm).then(() => {
+  regKeyAdd({...addForm, expireTime: toExpireUtc(addForm.expireTime)}).then(() => {
     showAdd.value = false
     resetForm()
     ElMessage({
@@ -396,7 +402,7 @@ function openAdd() {
 .scrollbar {
   height: calc(100% - 48px);
   position: relative;
-  background: var(--extra-light-fill);
+  background: var(--settings-page-background);
   @media (max-width: 372px) {
     height: calc(100% - 85px);
   }

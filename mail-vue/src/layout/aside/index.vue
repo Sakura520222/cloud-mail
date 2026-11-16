@@ -1,30 +1,34 @@
 <template>
   <el-scrollbar class="scroll">
     <div>
-      <div class="title" >
-        <Icon icon="mdi:email-outline" width="24" height="24" />
+      <div class="title" :class="{ 'title-display': titleUsesDisplayFont }">
+        <img class="logo" :src="logoUrl" alt="" />
         <div>{{settingStore.settings.title}}</div>
       </div>
-      <el-menu :collapse="false" text-color="#fff" active-text-color="#fff" style="margin-top: 10px">
+      <button v-perm="'email:send'" class="compose-bar" type="button" @click="openCompose">
+        <Icon icon="hugeicons:quill-write-01" width="22" height="22" />
+        <span>{{ $t('compose') }}</span>
+      </button>
+      <el-menu :collapse="false" text-color="#fff" active-text-color="#fff" style="margin-top: 6px">
         <el-menu-item @click="router.push({name: 'email'})" index="email"
                       :class="route.meta.name === 'email' ? 'choose-item' : ''">
           <Icon icon="hugeicons:mailbox-01" width="20" height="20" />
-          <span class="menu-name" style="margin-left: 21px">{{$t('inbox')}}</span>
+          <span class="menu-name" style="margin-left: 16px">{{$t('inbox')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'send'})" index="send" v-perm="'email:send'"
                       :class="route.meta.name === 'send' ? 'choose-item' : ''">
           <Icon icon="cil:send" width="20" height="20" />
-          <span class="menu-name" style="margin-left: 21px">{{$t('sent')}}</span>
+          <span class="menu-name" style="margin-left: 16px">{{$t('sent')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'draft'})" index="draft" v-perm="'email:send'"
                       :class="route.meta.name === 'draft' ? 'choose-item' : ''">
           <Icon icon="ep:document" width="19" height="19" />
-          <span class="menu-name" style="margin-left: 22px">{{$t('drafts')}}</span>
+          <span class="menu-name" style="margin-left: 17px">{{$t('drafts')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'star'})" index="star"
                       :class="route.meta.name === 'star' ? 'choose-item' : ''">
           <Icon icon="solar:star-line-duotone" width="20" height="20" />
-          <span class="menu-name" style="margin-left: 21px">{{$t('starred')}}</span>
+          <span class="menu-name" style="margin-left: 16px">{{$t('starred')}}</span>
         </el-menu-item>
 
         <!-- Folders section -->
@@ -61,7 +65,7 @@
         <el-menu-item @click="router.push({name: 'setting'})" index="setting"
                       :class="route.meta.name === 'setting' ? 'choose-item' : ''">
           <Icon icon="fluent:settings-48-regular" width="20" height="20" />
-          <span class="menu-name" style="margin-left: 21px">{{$t('settings')}}</span>
+          <span class="menu-name" style="margin-left: 16px">{{$t('settings')}}</span>
         </el-menu-item>
         <div class="manage-title" v-perm="['all-email:query','user:query','role:query','setting:query','reg-key:query']">
           <div>{{$t('manage')}}</div>
@@ -69,27 +73,27 @@
         <el-menu-item @click="router.push({name: 'user'})" index="setting" v-perm="'user:query'"
                       :class="route.meta.name === 'user' ? 'choose-item' : ''">
           <Icon icon="si:user-alt-2-line" width="20" height="20" />
-          <span class="menu-name" style="margin-left: 21px">{{$t('allUsers')}}</span>
+          <span class="menu-name" style="margin-left: 16px">{{$t('allUsers')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'all-email'})" index="all-email" v-perm="'all-email:query'"
                       :class="route.meta.name === 'all-email' ? 'choose-item' : ''">
           <Icon icon="fluent:mail-list-28-regular" width="22" height="22" />
-          <span class="menu-name" style="margin-left: 20px">{{$t('allMail')}}</span>
+          <span class="menu-name" style="margin-left: 15px">{{$t('allMail')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'role'})" index="setting" v-perm="'role:query'"
                       :class="route.meta.name === 'role' ? 'choose-item' : ''">
           <Icon icon="fluent:lock-closed-16-regular" width="22" height="22" />
-          <span class="menu-name" style="margin-left: 20px">{{$t('permissions')}}</span>
+          <span class="menu-name" style="margin-left: 15px">{{$t('permissions')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'reg-key'})" index="reg-key" v-perm="'reg-key:query'"
                       :class="route.meta.name === 'reg-key' ? 'choose-item' : ''">
           <Icon icon="fluent:fingerprint-20-filled" width="22" height="22" />
-          <span class="menu-name" style="margin-left: 20px">{{$t('inviteCode')}}</span>
+          <span class="menu-name" style="margin-left: 15px">{{$t('inviteCode')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'sys-setting'})" index="sys-setting" v-perm="'setting:query'"
                       :class="route.meta.name === 'sys-setting' ? 'choose-item' : ''">
           <Icon icon="eos-icons:system-ok-outlined" width="18" height="18" style="margin-left: 2px" />
-          <span class="menu-name" style="margin-left: 22px">{{$t('SystemSettings')}}</span>
+          <span class="menu-name" style="margin-left: 17px">{{$t('SystemSettings')}}</span>
         </el-menu-item>
       </el-menu>
     </div>
@@ -98,6 +102,7 @@
 
 <script setup>
 import router from "@/router/index.js";
+import {computed} from "vue";
 import { useRoute } from "vue-router";
 import {Icon} from "@iconify/vue";
 import {useSettingStore} from "@/store/setting.js";
@@ -108,12 +113,21 @@ import {tagAdd, tagDelete} from "@/request/tag.js";
 import {ElMessage, ElMessageBox} from 'element-plus';
 import {useI18n} from "vue-i18n";
 import {onMounted} from "vue";
+import {useUiStore} from "@/store/ui.js";
+import {callWriter} from "@/utils/writer-utils.js";
 
 const {t} = useI18n();
 const settingStore = useSettingStore();
 const folderStore = useFolderStore();
 const tagStore = useTagStore();
+const uiStore = useUiStore();
 const route = useRoute();
+const logoUrl = `${import.meta.env.BASE_URL}mail.png`
+const titleUsesDisplayFont = computed(() => !/\p{Script=Han}/u.test(settingStore.settings.title || ''))
+
+function openCompose() {
+  callWriter(uiStore, 'open')
+}
 
 onMounted(async () => {
   try {
@@ -177,19 +191,26 @@ async function handleDeleteTag(tg) {
 
 <style lang="scss" scoped>
 
+@font-face {
+  font-family: "BAHAMASB";
+  src: url("/fonts/BAHAMASB.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 .title {
-  margin: 15px 10px;
+  margin: 10px 6px;
   height: 45px;
   border-radius: 6px;
   display: flex;
   position: relative;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 600;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
+  justify-content: flex-start;
+  gap: 10px;
   color: #ffffff;
-  background: linear-gradient(135deg, #1890ff, #3a80dd);
   transition: all 0.3s ease;
   max-width: 240px;
   padding: 0 10px;
@@ -197,12 +218,14 @@ async function handleDeleteTag(tg) {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    max-width: calc(240px - 20px - 30px);
+    max-width: calc(240px - 20px - 32px - 5px);
   }
 
-  :deep(.el-icon) {
+  .logo {
+    width: 36px;
+    height: 36px;
     flex-shrink: 0;
-    font-size: 20px;
+    object-fit: contain;
   }
 
   .user-right-icon {
@@ -215,23 +238,56 @@ async function handleDeleteTag(tg) {
 
 }
 
+.title.title-display {
+  font-family: "BAHAMASB", Inter, "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 22px;
+  font-weight: normal;
+}
+
+.compose-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 24px);
+  height: 42px;
+  margin-right: 12px;
+  margin-left: 12px;
+  margin-bottom: 15px;
+  border: 0;
+  border-radius: 8px;
+  background: #1890ff;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: #1064c0;
+  }
+
+  @media (max-width: 767px) {
+    display: none;
+  }
+}
 
 .manage-title {
-  margin-top: 10px;
+  margin-top: 12px;
   padding-left: 20px;
   color: #fff;
 }
 
 .el-menu-item {
-  margin: 5px 10px !important;
+  margin: 3px 12px !important;
   border-radius: 6px;
   height: 36px;
   padding: 10px !important;
 }
 
 .choose-item {
-  font-weight: bold;
-  background: rgba(255, 255, 255, 0.08) !important;
+  font-weight: 400;
+  background: var(--aside-menu-active-background) !important;
   backdrop-filter: blur(4px);
 }
 

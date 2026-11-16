@@ -6,19 +6,12 @@
                :emailDelete="emailDelete"
                :star-add="starAdd"
                :star-cancel="starCancel"
-               :time-sort="params.timeSort"
                :email-read="emailRead"
                :show-unread="true"
+               :highlight-text="emailStore.searchParams.text"
                actionLeft="4px"
                @jump="jumpContent"
   >
-    <template #first>
-      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
-            v-if="params.timeSort === 0" width="28" height="28"/>
-      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-up-outline" v-else
-            width="28" height="28"/>
-    </template>
-
   </emailScroll>
 </template>
 
@@ -32,7 +25,6 @@ import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, h, onMounted, reactive, ref, watch, computed} from "vue";
 import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
-import {Icon} from "@iconify/vue";
 import { useRoute } from 'vue-router'
 
 defineOptions({
@@ -71,13 +63,21 @@ function changeTimeSort() {
   scroll.value.refreshList();
 }
 
+watch(
+  () => emailStore.searchParams,
+  () => {
+    scroll.value.refreshList()
+  },
+  {deep: true}
+)
+
 function jumpContent(email) {
   emailStore.contentData.email = emailStore.toContentEmail(email)
   emailStore.contentData.delType = 'logic'
   emailStore.contentData.showUnread = true
   emailStore.contentData.showStar = true
   emailStore.contentData.showReply = true
-  router.push('/message')
+  router.push({name: 'content', params: {mailbox: 'inbox'}})
 }
 
 const existIds = new Set();
@@ -92,13 +92,17 @@ async function latest() {
       continue;
     }
 
+    const searchParams = emailStore.searchParams
+    if (searchParams.text || searchParams.startDate || searchParams.endDate) {
+      continue
+    }
+
     const latestId = scroll.value.latestEmail?.emailId
 
     if (!scroll.value.firstLoad && autoRefresh > 1) {
       try {
         const accountId = accountStore.currentAccountId
         const allReceive = scroll.value.latestEmail?.allReceive
-        const curTimeSort = params.timeSort
         let list = []
 
         //确保发起请求时最后一个邮件是当前账号的,或者
@@ -107,7 +111,7 @@ async function latest() {
         }
 
         //确保请求回来后，账号没有切换，时间排序没有改变，全部邮件类型没变
-        if (accountId === accountStore.currentAccountId && params.timeSort === curTimeSort && allReceive === accountStore.currentAccount.allReceive) {
+        if (accountId === accountStore.currentAccountId && allReceive === accountStore.currentAccount.allReceive) {
           if (list.length > 0) {
             emailStore.applyFullList(list)
 
@@ -166,7 +170,7 @@ function getEmailList(emailId, size) {
   const accountId =  accountStore.currentAccountId;
   const allReceive = accountStore.currentAccount.allReceive;
   return emailStore.fetchList(full =>
-    emailList(accountId, allReceive, emailId, params.timeSort, size, 0, full)
+    emailList(accountId, allReceive, emailId, params.timeSort, size, 0, full, emailStore.searchParams)
   ).then(data => {
     data.latestEmail.reqAccountId = accountId;
     data.latestEmail.allReceive = allReceive;

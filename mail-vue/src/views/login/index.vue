@@ -1,5 +1,8 @@
 <template>
-  <div id="login-box" :style=" background ? 'background: var(--el-bg-color)' : ''" v-loading="oauthLoading" element-loading-text="登录中...">
+  <div id="login-box" :style=" background ? 'background: var(--el-bg-color)' : ''">
+    <div class="oauth-loading" :class="oauthLoading ? 'loading-show' : 'loading-hide'">
+      <loading/>
+    </div>
     <div id="background-wrap" v-if="!settingStore.settings.background">
       <div class="x1 cloud"></div>
       <div class="x2 cloud"></div>
@@ -15,7 +18,7 @@
         <span class="form-desc" v-else>{{ $t('regTitle') }}</span>
         <div v-show="show === 'login'">
           <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="form.email"
-                    type="text" :placeholder="$t('emailAccount')" autocomplete="off">
+                    type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
             <template #append v-if="!hideLoginDomain">
               <div @click.stop="openSelect">
                 <el-select
@@ -39,18 +42,20 @@
               </div>
             </template>
           </el-input>
-          <el-input v-model="form.password" :placeholder="$t('password')" type="password" autocomplete="off">
+          <el-input v-model="form.password" :placeholder="$t('password')" type="password" autocomplete="off" @keyup.enter="submit">
           </el-input>
           <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
           >{{ $t('loginBtn') }}
           </el-button>
-          <el-button class="btn" v-if="settingStore.settings.linuxdoSwitch"  style="margin-top: 10px"  @click="linuxDoLogin">
-            <el-avatar src="/image/linuxdo.webp" :size="18" style="margin-right: 10px" />LinuxDo
+          <el-button v-for="p in oauthProviders" :key="p.key" class="btn" style="margin-top: 10px" @click="oauthLogin(p.key)">
+            <el-avatar v-if="p.iconType === 'image'" :src="p.icon" :size="18" style="margin-right: 10px" />
+            <Icon v-else :icon="p.icon" width="18" height="18" style="margin-right: 10px" />
+            {{ p.label }}
           </el-button>
         </div>
         <div v-show="show !== 'login'">
           <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
-                    autocomplete="off">
+                    autocomplete="off" @keyup.enter="submitRegister">
             <template #append v-if="!hideLoginDomain">
               <div @click.stop="openSelect">
                 <el-select
@@ -74,14 +79,16 @@
               </div>
             </template>
           </el-input>
-          <el-input v-model="registerForm.password" :placeholder="$t('password')" type="password" autocomplete="off"/>
+          <el-input v-model="registerForm.password" :placeholder="$t('password')" type="password" autocomplete="off" @keyup.enter="submitRegister"/>
           <el-input v-model="registerForm.confirmPassword" :placeholder="$t('confirmPwd')" type="password"
-                    autocomplete="off"/>
+                    autocomplete="off" @keyup.enter="submitRegister"/>
           <el-input v-if="settingStore.settings.regKey === 0" v-model="registerForm.code" :placeholder="$t('regKey')"
-                    type="text" autocomplete="off"/>
+                    type="text" autocomplete="off" @keyup.enter="submitRegister"/>
           <el-input v-if="settingStore.settings.regKey === 2" v-model="registerForm.code"
-                    :placeholder="$t('regKeyOptional')" type="text" autocomplete="off"/>
+                    :placeholder="$t('regKeyOptional')" type="text" autocomplete="off" @keyup.enter="submitRegister"/>
           <div v-show="verifyShow"
+               ref="turnstileContainer"
+               :key="turnstileContainerKey"
                class="register-turnstile"
                :data-sitekey="settingStore.settings.siteKey"
                data-callback="onTurnstileSuccess"
@@ -89,13 +96,15 @@
                data-after-interactive-callback="loadAfter"
                data-before-interactive-callback="loadBefore"
           >
-            <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
+            <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed', {action: $t('regBtn')}) }}</span>
           </div>
           <el-button class="btn" style="margin: 0" type="primary" @click="submitRegister" :loading="registerLoading"
           >{{ $t('regBtn') }}
           </el-button>
-          <el-button v-if="settingStore.settings.linuxdoSwitch" class="btn" style="margin-top: 10px"  @click="linuxDoLogin">
-            <el-avatar src="/image/linuxdo.webp" :size="18" style="margin-right: 10px" />LinuxDo
+          <el-button v-for="p in oauthProviders" :key="p.key" class="btn" style="margin-top: 10px" @click="oauthLogin(p.key)">
+            <el-avatar v-if="p.iconType === 'image'" :src="p.icon" :size="18" style="margin-right: 10px" />
+            <Icon v-else :icon="p.icon" width="18" height="18" style="margin-right: 10px" />
+            {{ p.label }}
           </el-button>
         </div>
         <template v-if="settingStore.settings.register === 0">
@@ -108,7 +117,7 @@
     </div>
     <el-dialog class="bind-dialog" v-model="showBindForm"  title="注册邮箱" >
       <div class="bind-container">
-        <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="bindForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
+        <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="bindForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="bind">
           <template #append v-if="!hideLoginDomain">
             <div @click.stop="openSelect">
               <el-select
@@ -132,9 +141,9 @@
           </template>
         </el-input>
         <el-input v-if="settingStore.settings.regKey === 0" v-model="bindForm.code" :placeholder="$t('regKey')"
-                  type="text" autocomplete="off"/>
+                  type="text" autocomplete="off" @keyup.enter="bind"/>
         <el-input v-if="settingStore.settings.regKey === 2" v-model="bindForm.code"
-                  :placeholder="$t('regKeyOptional')" type="text" autocomplete="off"/>
+                  :placeholder="$t('regKeyOptional')" type="text" autocomplete="off" @keyup.enter="bind"/>
         <el-button class="btn" type="primary" @click="bind" :loading="bindLoading"
         >绑定
         </el-button>
@@ -148,6 +157,7 @@
 
 <script setup>
 import router from "@/router";
+import {useRoute} from "vue-router";
 import {computed, nextTick, reactive, ref} from "vue";
 import {login} from "@/request/login.js";
 import {register} from "@/request/login.js";
@@ -162,18 +172,39 @@ import {cvtR2Url} from "@/utils/convert.js";
 import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
-import {oauthBindUser, oauthLinuxDoLogin} from "@/request/ouath.js";
+import {oauthBindUser, oauthLinuxDoLogin, oauthGithubLogin, oauthGoogleLogin} from "@/request/ouath.js";
+import {reloadTurnstileScript} from "@/utils/turnstile-script.js";
+import loading from "@/components/loading/index.vue";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
 const userStore = useUserStore();
 const uiStore = useUiStore();
 const settingStore = useSettingStore();
+const route = useRoute();
 const loginLoading = ref(false)
 const bindLoading = ref(false)
 const oauthLoading = ref(false);
 const showBindForm = ref(false);
 const show = ref('login')
+
+const oauthKeys = ['linuxdo', 'github', 'google']
+
+const oauthProvider = computed(() => {
+  const fromState = route.query.state
+  if (oauthKeys.includes(fromState)) return fromState
+  const fromStore = sessionStorage.getItem('oauthProvider')
+  return oauthKeys.includes(fromStore) ? fromStore : null
+})
+
+const oauthProviders = computed(() => {
+  const allProviders = [
+    { key: 'google', label: 'Google', icon: 'devicon:google', iconType: 'iconify' },
+    { key: 'github', label: 'GitHub', icon: 'codicon:github-inverted', iconType: 'iconify' },
+    { key: 'linuxdo', label: 'LinuxDo', icon: '/image/linuxdo.webp', iconType: 'image' },
+  ]
+  return allProviders.filter(p => settingStore.settings[p.key + 'Switch'] === 0)
+})
 
 const bindForm = reactive({
   email: '',
@@ -202,6 +233,29 @@ let verifyToken = ''
 let turnstileId = null
 let botJsError = ref(false)
 let verifyErrorCount = 0
+let turnstileRecoveryAttempted = false
+const turnstileContainer = ref(null)
+const turnstileContainerKey = ref(0)
+
+async function recoverTurnstile() {
+  if (turnstileRecoveryAttempted) return
+  turnstileRecoveryAttempted = true
+  botJsError.value = false
+  verifyToken = ''
+  turnstileId = null
+  turnstileContainerKey.value++
+  try {
+    const api = await reloadTurnstileScript()
+    await nextTick()
+    if (show.value === 'login' || !turnstileContainer.value) return
+    turnstileId = api.render(turnstileContainer.value)
+  } catch (error) {
+    botJsError.value = true
+    console.warn('Turnstile recovery failed', error)
+  } finally {
+    turnstileRecoveryAttempted = false
+  }
+}
 
 window.onTurnstileSuccess = (token) => {
   verifyToken = token;
@@ -237,27 +291,16 @@ const loginOpacity = computed(() => {
   return uiStore.dark ? `rgba(0, 0, 0, ${opacity})` : `rgba(255, 255, 255, ${opacity})`
 })
 
-const loginDarkenFactor = computed(() => {
-  const factor = Number(settingStore.settings.loginDarkenFactor ?? 0)
-  if (Number.isNaN(factor)) return 0
-  return Math.min(1, Math.max(0, factor))
-})
-
 const hideLoginDomain = computed(() => settingStore.settings.loginDomain === 1)
 
 const background = computed(() => {
-  const bg = settingStore.settings.background
-  if (!bg) return ''
-  const bgUrl = cvtR2Url(bg)
-  return {
-    'background-image': `
-      linear-gradient(rgba(0, 0, 0, ${loginDarkenFactor.value}), rgba(0, 0, 0, ${loginDarkenFactor.value})),
-      url(${bgUrl})
-    `,
-    'background-repeat': 'no-repeat, no-repeat',
-    'background-size': 'cover, cover',
-    'background-position': 'center, center'
-  }
+
+  return settingStore.settings.background ? {
+    'background-image': `url(${cvtR2Url(settingStore.settings.background)})`,
+    'background-repeat': 'no-repeat',
+    'background-size': 'cover',
+    'background-position': 'center'
+  } : ''
 })
 
 const openSelect = () => {
@@ -272,50 +315,62 @@ const getEmailName = (email) => {
   return email.split('@')[0]
 }
 
-function linuxDoLogin() {
-  const clientId = settingStore.settings.linuxdoClientId
-  const redirectUri = encodeURIComponent(settingStore.settings.linuxdoCallbackUrl)
-  window.location.href =
-      `https://connect.linux.do/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email`
+function oauthLogin(provider) {
+  const clientId = settingStore.settings[provider + 'ClientId']
+  const redirectUri = encodeURIComponent(window.location.origin + '/login')
+  sessionStorage.setItem('oauthProvider', provider)
+  const authorizeUrls = {
+    linuxdo: `https://connect.linux.do/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email&state=${provider}`,
+    github: `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email&state=${provider}`,
+    google: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email&state=${provider}`,
+  }
+  window.location.href = authorizeUrls[provider]
 }
 
-linuxDoGetUser();
+const loginFns = {
+  linuxdo: oauthLinuxDoLogin,
+  github: oauthGithubLogin,
+  google: oauthGoogleLogin,
+}
 
-async function linuxDoGetUser() {
+oauthGetUser();
+
+async function oauthGetUser() {
 
   const params = new URLSearchParams(window.location.search)
   const code = params.get('code')
+  if (!code || !oauthProvider.value) return
 
-  if (code) {
+  const provider = oauthProvider.value
+  oauthLoading.value = true
+  sessionStorage.removeItem('oauthProvider')
+  window.history.replaceState({}, '', window.location.origin + window.location.pathname)
 
-    oauthLoading.value = true
-    oauthLinuxDoLogin(code).then(data => {
+  loginFns[provider](code, window.location.origin + '/login').then(data => {
 
-      bindForm.oauthUserId = data.userInfo.oauthUserId;
+    bindForm.oauthUserId = data.userInfo.oauthUserId;
 
-      if (!data.token) {
-        showBindForm.value = true
-        oauthLoading.value = false
-        ElMessage({
-          message: '请注册绑定一个邮箱',
-          type: 'warning',
-          duration: 4000,
-          plain: true,
-        })
-        return;
-      }
-
-      saveToken(data.token);
-    }).catch(() => {
+    if (!data.token) {
+      showBindForm.value = true
       oauthLoading.value = false
-    })
-  }
+      ElMessage({
+        message: '请注册绑定一个邮箱',
+        type: 'warning',
+        duration: 4000,
+        plain: true,
+      })
+      return;
+    }
 
-  const cleanUrl = window.location.origin + window.location.pathname
-  window.history.replaceState({}, '', cleanUrl)
+    saveToken(data.token);
+  }).catch(() => {
+    oauthLoading.value = false
+  })
 }
 
 function bind() {
+
+  if (bindLoading.value) return
 
   if (!bindForm.email) {
     ElMessage({
@@ -373,6 +428,8 @@ function bind() {
 }
 
 const submit = () => {
+
+  if (loginLoading.value) return
 
   if (!form.email) {
     ElMessage({
@@ -443,6 +500,8 @@ function refreshWebsiteConfig() {
 
 
 function submitRegister() {
+
+  if (registerLoading.value) return
 
   if (!registerForm.email) {
     ElMessage({
@@ -518,6 +577,7 @@ function submitRegister() {
   }
 
   if (!verifyToken && (settingStore.settings.registerVerify === 0 || (settingStore.settings.registerVerify === 2 && settingStore.settings.regVerifyOpen))) {
+    if (turnstileRecoveryAttempted) return
     if (!verifyShow.value) {
       verifyShow.value = true
       nextTick(() => {
@@ -527,12 +587,15 @@ function submitRegister() {
           } catch (e) {
             botJsError.value = true
             console.log('人机验证js加载失败')
+            recoverTurnstile()
           }
         } else {
           window.turnstile.reset('.register-turnstile')
         }
       })
-    } else if (!botJsError.value) {
+    } else if (botJsError.value) {
+      recoverTurnstile()
+    } else {
       ElMessage({
         message: t('botVerifyMsg'),
         type: "error",
@@ -753,6 +816,7 @@ function submitRegister() {
   width: 100px;
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;
 }
 
 .custom-style {
@@ -765,7 +829,32 @@ function submitRegister() {
 }
 
 
+.oauth-loading {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--loadding-background);
+  left: 0;
+  z-index: 20;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.loading-show {
+  transition: all 200ms ease 200ms;
+  opacity: 1;
+}
+
+.loading-hide {
+  pointer-events: none;
+  transition: var(--loading-hide-transition);
+  opacity: 0;
+}
+
 #login-box {
+  position: relative;
   background: linear-gradient(to bottom, #2980b9, #6dd5fa, #fff);
   font: 100% Arial, sans-serif;
   height: 100%;

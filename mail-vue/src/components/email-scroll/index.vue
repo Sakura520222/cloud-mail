@@ -10,8 +10,8 @@
       </el-checkbox>
       <div class="header-left" :style="'padding-left:' + actionLeft">
 
-        <slot name="first"></slot>
         <Icon class="icon reload" icon="ion:reload" width="18" height="18" @click="refresh"/>
+        <slot name="first"></slot>
         <Icon v-perm="'email:delete'" class="icon delete" icon="uiw:delete" width="16" height="16"
               v-if="getSelectedMailsIds().length > 0"
               @click="handleDelete"/>
@@ -44,16 +44,17 @@
                         :key="keyCount"
         >
           <template #default="{ data: item, index }" >
-            <div :class="'email-row ' + props.type"
+            <div :class="['email-row', props.type, { 'right-checked': item.rightChecked }]"
                  :data-checked="item.checked"
                  @click="jumpDetails(item)"
                  v-if="!item.expand"
                  :key="item.emailId"
                  @contextmenu="handleContextmenu($event, item)"
-                 :style="item.rightChecked ? 'background: #FDF6EC' : ''"
             >
               <el-checkbox :class=" props.type === 'all-email' ? 'all-email-checkbox' : 'checkbox'"
-                           v-model="item.checked" @click.stop></el-checkbox>
+                           v-model="item.checked"
+                           :disabled="!item.checked && isSelectMax"
+                           @click.stop></el-checkbox>
               <div @click.stop="starChange(item)" class="pc-star" v-if="showStar">
                 <Icon v-if="item.isStar" icon="fluent-color:star-16" width="20" height="20"/>
                 <Icon v-else icon="solar:star-line-duotone" width="18" height="18"/>
@@ -63,10 +64,10 @@
 
                 <div class="email-sender" :style=" (showStatus ? 'gap: 10px;' : '') + ((item.unread === EmailUnreadEnum.UNREAD && showUnread)  ? 'font-weight: bold' : '')">
                   <div class="email-status" v-if="showStatus">
-                    <el-tooltip effect="dark" :content="item.statusIcon.content">
+                    <el-tooltip v-if="item.statusIcon" effect="dark" :content="item.statusIcon.content">
                       <Icon :icon="item.statusIcon.icon" :style="`color: ${item.statusIcon.color}`" width="20" height="20"/>
                     </el-tooltip>
-                    <div class="del-status" v-if="item.isDel">
+                    <div class="del-status" v-if="item.isDel && item.status !== 6">
                       <el-tooltip effect="dark" :content="item.isDelContent">
                         <Icon class="icon" icon="mdi:email-remove" width="20" height="20"/>
                       </el-tooltip>
@@ -76,7 +77,7 @@
                   <span class="name">
                     <span>
                       <div class="unread" v-if="isMobile && (item.unread === EmailUnreadEnum.UNREAD && showUnread) "/>
-                      <slot name="name" :email="item"> {{ item.name }}</slot>
+                      <slot name="name" :email="item"><span v-html="item.nameHtml"></span></slot>
                     </span>
                     <span>
                       <Icon v-if="item.isStar" icon="fluent-color:star-16" width="18" height="18"/>
@@ -91,24 +92,24 @@
                       <span v-if="item.code" class="code-tag" @click.stop="copyCode(item.code)">[{{ t('codeLabel') }}{{ item.code }}]</span>
                       <span class="subject-text">
                         <slot name="subject" :email="item" >
-                          {{ item.subject || '\u200B' }}
+                          <span v-html="item.subjectHtml"></span>
                         </slot>
                       </span>
                     </span>
-                    <span class="email-content">{{ item.listText || item.text || '\u200B' }}</span>
+                    <span class="email-content" v-html="item.listHtml"></span>
                   </div>
                   <div class="user-info" v-if="showUserInfo">
                     <div class="user">
                       <span>
                         <Icon icon="mynaui:user" width="20" height="20"/>
                       </span>
-                      <span>{{ item.userEmail }}</span>
+                      <span v-html="item.userEmailHtml"></span>
                     </div>
                     <div class="account">
                       <span>
                         <Icon icon="mdi-light:email" width="20" height="20"/>
                       </span>
-                      <span>{{ item.type === 0 ? item.toEmail : item.sendEmail }}</span>
+                      <span v-html="item.accountEmailHtml"></span>
                     </div>
                   </div>
                 </div>
@@ -180,7 +181,7 @@
           <el-dropdown-item v-if="['email','star'].includes(props.type)" @click="openReply(rightClickEmail)">
             <template #default>
               <div class="right-dropdown-item">
-                <Icon icon="la:reply" width="20" height="20"  />
+                <Icon icon="fluent-mdl2:reply" width="19" height="19"  />
                 <span>{{t('reply')}}</span>
               </div>
             </template>
@@ -387,10 +388,15 @@ const props = defineProps({
   showUnread: {
     type: Boolean,
     default: false
+  },
+  highlightText: {
+    type: String,
+    default: ''
   }
 })
 
 const emit = defineEmits(['jump', 'refresh-before', 'delete-draft', 'right-search'])
+
 const {t} = useI18n()
 const settingStore = useSettingStore()
 const uiStore = useUiStore();
@@ -408,6 +414,8 @@ const firstLoad = ref(true)
 let scrollTop = 0
 const latestEmail = ref(null)
 const scrollbarRef = ref(null)
+// iPad can report a Mac platform when requesting desktop websites.
+const isMacOS = /Mac/.test(navigator.platform) && navigator.maxTouchPoints <= 1
 let reqLock = false
 let isMobile = ref(innerWidth < 1367)
 let skeletonRows = 0
@@ -417,6 +425,7 @@ const dropdownRef = ref(null);
 const dropdownCloseLock = ref(false);
 const dropdownShow = ref(false);
 const rightClickEmail = ref({});
+const MAX_SELECT_COUNT = 95;
 const checkedEmailCount = ref(0);
 const folderStore = useFolderStore();
 const tagStore = useTagStore();
@@ -428,6 +437,7 @@ const showBatchFolderDialog = ref(false);
 const showBatchTagDialog = ref(false);
 const batchFolderList = ref([]);
 const batchTagList = ref([]);
+const isSelectMax = computed(() => checkedEmailCount.value >= MAX_SELECT_COUNT);
 let timer = null
 const position = ref(
     DOMRect.fromRect({
@@ -802,10 +812,16 @@ async function handleBatchCreateTag() {
 
 function updateHasScrollbar() {
   nextTick(() => {
+
+    if (isMacOS) {
+      timePaddingRight.value = '15px'
+      return
+    }
+
     const doc = document.querySelector('.virtual');
     if (doc) {
       if (doc.scrollHeight > doc.clientHeight) {
-        timePaddingRight.value = '5px';
+        timePaddingRight.value = '6px';
       } else {
         timePaddingRight.value = '15px'
       }
@@ -1010,7 +1026,19 @@ function addItem(email) {
 }
 
 function handleCheckAllChange(val) {
-  emailList.forEach(item => item.checked = val);
+  if (val) {
+    let count = 0;
+    emailList.forEach(item => {
+      if (count < MAX_SELECT_COUNT) {
+        item.checked = true;
+        count++;
+      } else {
+        item.checked = false;
+      }
+    });
+  } else {
+    emailList.forEach(item => item.checked = false);
+  }
   isIndeterminate.value = false;
 }
 
@@ -1026,8 +1054,16 @@ function getSelectedDraftsIds() {
 function updateCheckStatus() {
   const checkedCount = emailList.filter(item => item.checked).length;
   checkedEmailCount.value = checkedCount;
-  checkAll.value = checkedCount === emailList.length;
-  isIndeterminate.value = checkedCount > 0 && checkedCount < emailList.length;
+  const atMax = checkedCount >= MAX_SELECT_COUNT;
+  checkAll.value = emailList.length > 0 && (checkedCount === emailList.length || atMax);
+  isIndeterminate.value = checkedCount > 0 && !checkAll.value;
+}
+
+function toggleRowChecked(email) {
+  if (!email.checked && isSelectMax.value) {
+    return
+  }
+  email.checked = !email.checked
 }
 
 function jumpDetails(email) {
@@ -1043,6 +1079,12 @@ function jumpDetails(email) {
       return
     }
   }
+
+  if (checkedEmailCount.value > 0) {
+    toggleRowChecked(email)
+    return
+  }
+
   emit('jump', email)
 }
 
@@ -1122,6 +1164,7 @@ function handleList(list) {
       8: { icon: 'bi:send-x-fill',         color: '#F56C6C', content: t('bounced') },
       4: { icon: 'bi:send-exclamation-fill', color: '#FBBD08', content: t('complained') },
       5: { icon: 'bi:send-arrow-up-fill',  color: '#FBBD08', content: t('delayed') },
+      6: { icon: 'mdi:email-lock', color: '#909399', content: t('saving') },
       7: { icon: 'ic:round-mark-email-read', color: '#FBBD08', content: t('noRecipient') },
     };
 
@@ -1129,8 +1172,21 @@ function handleList(list) {
       email.isDelContent = t('selectDeleted');
     }
     email.statusIcon = statusIconMap[email.status];
+    applyHighlight(email);
   })
 }
+
+function applyHighlight(email) {
+  email.nameHtml = renderHighlight(email.name);
+  email.subjectHtml = renderHighlight(email.subject);
+  email.listHtml = renderHighlight(email.listText || email.text);
+  email.userEmailHtml = renderHighlight(email.userEmail);
+  email.accountEmailHtml = renderHighlight(email.type === 0 ? email.toEmail : email.sendEmail);
+}
+
+watch(() => props.highlightText, () => {
+  emailList.forEach(applyHighlight);
+})
 
 function refresh() {
   emit('refresh-before')
@@ -1150,8 +1206,42 @@ function loadData() {
   getEmailList()
 }
 
+
+function escapeHtml(value) {
+  return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+}
+
+function renderHighlight(value) {
+  const text = value == null ? '' : String(value)
+  if (!text) return '\u200B'
+  const keyword = props.highlightText?.trim()
+  if (!keyword) return escapeHtml(text)
+  const pattern = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+  let html = ''
+  let lastIndex = 0
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index ?? 0
+    html += escapeHtml(text.slice(lastIndex, index))
+    html += `<mark class="search-hit">${escapeHtml(match[0])}</mark>`
+    lastIndex = index + match[0].length
+  }
+  html += escapeHtml(text.slice(lastIndex))
+  return html
+}
+
 </script>
 <style lang="scss" scoped>
+:deep(.search-hit) {
+  background-color: var(--search-hit-background);
+  color: inherit;
+  padding: 0;
+  border-radius: 2px;
+}
+
 
 .email-container {
   display: grid;
@@ -1476,9 +1566,17 @@ function loadData() {
     z-index: 0;
   }
 
-  /*&[data-checked="true"] {
-    background-color: #c2dbff;
-  }*/
+  &.right-checked,
+  &.right-checked:hover {
+    background-color: var(--email-right-click-background);
+  }
+
+  &[data-checked="true"],
+  &[data-checked="true"]:hover,
+  &.right-checked[data-checked="true"],
+  &.right-checked[data-checked="true"]:hover {
+    background-color: var(--email-hover-background);
+  }
 }
 
 
@@ -1549,6 +1647,10 @@ function loadData() {
   .icon {
     font-size: 18px;
     cursor: pointer;
+  }
+
+  .reload {
+    margin-left: 2px;
   }
 
   .more-icon {

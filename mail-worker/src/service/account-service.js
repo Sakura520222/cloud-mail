@@ -59,6 +59,14 @@ const accountService = {
 			throw new BizError(t('isRegAccount'));
 		}
 
+		if (email.includes('+')) {
+			const baseEmail = emailUtils.getBaseEmail(email);
+			const baseAccount = await this.selectByEmailIncludeDel(c, baseEmail);
+			if (!baseAccount || baseAccount.userId !== userId) {
+				throw new BizError(t('notOwner'));
+			}
+		}
+
 		const userRow = await userService.selectById(c, userId);
 		const roleRow = await roleService.selectById(c, userRow.type);
 
@@ -162,6 +170,12 @@ const accountService = {
 			throw new BizError(t('noUserAccount'));
 		}
 
+		const { syncDelete } = await settingService.query(c);
+		if (syncDelete === settingConst.syncDelete.OPEN) {
+			await this.physicsDelete(c, { accountId });
+			return;
+		}
+
 		await orm(c).update(account).set({ isDel: isDel.DELETE }).where(
 			and(eq(account.userId, userId),
 				eq(account.accountId, accountId)))
@@ -209,7 +223,7 @@ const accountService = {
 	},
 
 	async restoreByEmail(c, email) {
-		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.email, email)).run();
+		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(sql`${account.email} COLLATE NOCASE = ${email}`).run();
 	},
 
 	async restoreByUserId(c, userId) {
@@ -273,7 +287,7 @@ const accountService = {
 		const userRow = await userService.selectById(c, userId);
 		const mainAccountRow = await accountService.selectByEmailIncludeDel(c, userRow.email);
 		let mainSort = mainAccountRow.sort === 0 ? 2 : mainAccountRow.sort + 1;
-		await orm(c).update(account).set({ sort: mainSort }).where(eq(account.email, userRow.email )).run();
+		await orm(c).update(account).set({ sort: mainSort }).where(eq(account.accountId, mainAccountRow.accountId)).run();
 		await orm(c).update(account).set({ sort: mainSort - 1 }).where(and(eq(account.accountId, accountId),eq(account.userId,userId))).run();
 	}
 };

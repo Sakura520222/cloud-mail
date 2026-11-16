@@ -77,7 +77,7 @@
     </el-scrollbar>
     <el-dialog v-model="showAdd" :title="$t('addAccount')">
       <div class="container">
-        <el-input v-model="addForm.email" ref="addRef" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
+        <el-input v-model="addForm.email" ref="addRef" type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
           <template #append>
             <div @click.stop="openSelect">
               <el-select
@@ -105,18 +105,20 @@
         </el-button>
       </div>
       <div
+          ref="turnstileContainer"
+          :key="turnstileContainerKey"
           class="add-email-turnstile"
           :class="verifyShow ? 'turnstile-show' : 'turnstile-hide'"
           :data-sitekey="settingStore.settings.siteKey"
           data-callback="onTurnstileSuccess"
           data-error-callback="onTurnstileError"
       >
-        <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
+        <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed', {action: $t('add')}) }}</span>
       </div>
     </el-dialog>
     <el-dialog v-model="setNameShow" :title="$t('changeUserName')">
       <div class="container">
-        <el-input v-model="accountName" type="text" :placeholder="$t('username')" autocomplete="off">
+        <el-input v-model="accountName" type="text" :placeholder="$t('username')" autocomplete="off" @keyup.enter="setName">
         </el-input>
         <el-button class="btn" type="primary" @click="setName" :loading="setNameLoading"
         >{{ $t('save') }}
@@ -145,6 +147,7 @@ import {useUserStore} from "@/store/user.js";
 import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {AccountAllReceiveEnum} from "@/enums/account-enum.js";
+import {reloadTurnstileScript} from "@/utils/turnstile-script.js";
 
 const {t} = useI18n();
 const userStore = useUserStore();
@@ -169,6 +172,9 @@ let turnstileId = null
 const botJsError = ref(false)
 let verifyToken = ''
 let verifyErrorCount = 0
+let turnstileRecoveryAttempted = false
+const turnstileContainer = ref(null)
+const turnstileContainerKey = ref(0)
 let first = true
 const addForm = reactive({
   email: '',
@@ -200,6 +206,26 @@ const openSelect = () => {
   mySelect.value.toggleMenu()
 }
 
+async function recoverTurnstile() {
+  if (turnstileRecoveryAttempted) return
+  turnstileRecoveryAttempted = true
+  botJsError.value = false
+  verifyToken = ''
+  turnstileId = null
+  turnstileContainerKey.value++
+  try {
+    const api = await reloadTurnstileScript()
+    await nextTick()
+    if (!showAdd.value || !turnstileContainer.value) return
+    turnstileId = api.render(turnstileContainer.value)
+  } catch (error) {
+    botJsError.value = true
+    console.warn('Turnstile recovery failed', error)
+  } finally {
+    turnstileRecoveryAttempted = false
+  }
+}
+
 window.onTurnstileError = (e) => {
   if (verifyErrorCount >= 4) {
     return
@@ -228,6 +254,8 @@ function getSkeletonRows() {
 }
 
 function setName() {
+
+  if (setNameLoading.value) return
 
   let name = accountName.value
 
@@ -427,6 +455,8 @@ function getAccountList() {
 
 function submit() {
 
+  if (addLoading.value) return
+
   if (!addForm.email) {
     ElMessage({
       message: t('emptyEmailMsg'),
@@ -455,6 +485,7 @@ function submit() {
   }
 
   if (!verifyToken && (settingStore.settings.addEmailVerify === 0 || (settingStore.settings.addEmailVerify === 2 && settingStore.settings.addVerifyOpen))) {
+    if (turnstileRecoveryAttempted) return
     if (!verifyShow.value) {
       verifyShow.value = true
       nextTick(() => {
@@ -464,12 +495,15 @@ function submit() {
           } catch (e) {
             botJsError.value = true
             console.log('人机验证js加载失败')
+            recoverTurnstile()
           }
         } else {
           window.turnstile.reset('.add-email-turnstile')
         }
       })
-    } else if (!botJsError.value) {
+    } else if (botJsError.value) {
+      recoverTurnstile()
+    } else {
       ElMessage({
         message: t('botVerifyMsg'),
         type: "error",
@@ -482,7 +516,6 @@ function submit() {
   addLoading.value = true
   accountAdd(addForm.email + addForm.suffix, verifyToken).then(account => {
     addLoading.value = false
-    showAdd.value = false
     addForm.email = ''
     accounts.push(account)
     verifyToken = ''
@@ -493,6 +526,7 @@ function submit() {
       plain: true
     })
     verifyShow.value = false
+    showAdd.value = false
     userStore.refreshUserInfo()
   }).catch(res => {
     if (res.code === 400) {
@@ -580,14 +614,15 @@ path[fill="#ffdda1"] {
   .item {
     background-color: var(--el-bg-color);
     border-radius: 8px;
-    padding: 12px 10px;
-    margin-bottom: 10px;
+    padding: 10px;
+    margin-bottom: 11px;
     margin-left: 10px;
     margin-right: 10px;
     cursor: pointer;
 
     .account {
-      font-weight: 600;
+      font-weight: 400;
+      font-size: 15px;
       margin-bottom: 20px;
       overflow: hidden;
       white-space: nowrap;

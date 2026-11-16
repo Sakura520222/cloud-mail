@@ -14,6 +14,7 @@ import aiService from '../service/ai-service';
 import folderService from '../service/folder-service';
 import tagService from '../service/tag-service';
 import emailTagService from '../service/email-tag-service';
+import webhookService from '../service/webhook-service';
 
 export async function email(message, env, ctx) {
 
@@ -25,6 +26,10 @@ export async function email(message, env, ctx) {
 			tgBotStatus,
 			forwardStatus,
 			forwardEmail,
+			webhookStatus,
+			webhookUrl,
+			webhookRetry,
+			webhookSecret,
 			ruleEmail,
 			ruleType,
 			r2Domain,
@@ -62,7 +67,14 @@ export async function email(message, env, ctx) {
 			return;
 		}
 
-		const account = await accountService.selectByEmailIncludeDel({ env: env }, message.to);
+		let account = await accountService.selectByEmailIncludeDel({ env: env }, message.to);
+
+		if (!account) {
+			const baseEmail = emailUtils.getBaseEmail(message.to);
+			if (baseEmail && baseEmail !== message.to) {
+				account = await accountService.selectByEmailIncludeDel({ env: env }, baseEmail);
+			}
+		}
 
 		if (!account && noRecipient === settingConst.noRecipient.CLOSE) {
 			message.setReject('Recipient not found');
@@ -98,12 +110,14 @@ export async function email(message, env, ctx) {
 
 		const toName = email.to.find(item => item.address === message.to)?.name || '';
 		const code = await aiService.extractCode({ env }, email, { aiCode, aiCodeFilter });
+		const fromAddress = email.from?.address || '';
 
 		const params = {
 			toEmail: message.to,
 			toName: toName,
-			sendEmail: email.from.address,
-			name: email.from.name || emailUtils.getName(email.from.address),
+			sendEmail: fromAddress,
+			name: email.from?.name || emailUtils.getName(fromAddress),
+			senderEmail: message.from || '',
 			subject: email.subject,
 			code,
 			content: email.html,
@@ -211,6 +225,11 @@ export async function email(message, env, ctx) {
 
 			}));
 
+		}
+
+		//转发到 Webhook
+		if (webhookStatus === settingConst.webhookStatus.OPEN && webhookUrl) {
+			await webhookService.sendEmail({ env }, emailRow, webhookUrl, webhookRetry, webhookSecret);
 		}
 
 	} catch (e) {
